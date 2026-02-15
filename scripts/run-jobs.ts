@@ -25,6 +25,28 @@ type JobEntry = {
   fileName: string;
 };
 
+const DRY_RUN_SUPPORTED_JOBS = new Set(["spotify-recently-played"]);
+
+function isDryRunFlag(arg: string): boolean {
+  return arg === "--dry" || arg === "--dry-run" || arg === "-d";
+}
+
+function parseCliArgs(rawArgs: string[]) {
+  let dryRun = false;
+  const cleanedArgs: string[] = [];
+
+  for (const arg of rawArgs) {
+    if (isDryRunFlag(arg)) {
+      dryRun = true;
+      continue;
+    }
+    cleanedArgs.push(arg);
+  }
+
+  const [jobArg, ...forwardedArgs] = cleanedArgs;
+  return { dryRun, jobArg, forwardedArgs };
+}
+
 function displayNameFromFile(fileName: string): string {
   return fileName.replace(/\.(ts|js|mjs|cjs)$/i, "");
 }
@@ -45,7 +67,8 @@ async function listJobs(): Promise<JobEntry[]> {
 
 function printHelp(jobs: JobEntry[]) {
   console.log(`${ANSI.bold}Usage${ANSI.reset}`);
-  console.log("  bun run job [job-name|job-file] [-- <job args>]");
+  console.log("  bun run job [--dry] [job-name|job-file] [-- <job args>]");
+  console.log("  bun run job:dry");
   console.log("");
   console.log(`${ANSI.bold}Available Jobs${ANSI.reset}`);
   for (const job of jobs) {
@@ -71,12 +94,14 @@ function clearRenderedLines(lineCount: number) {
   clearScreenDown(output);
 }
 
-function renderMenu(jobs: JobEntry[], selectedIndex: number): number {
+function renderMenu(jobs: JobEntry[], selectedIndex: number, dryRun: boolean): number {
   let renderedLines = 0;
   const width = output.columns && output.columns > 0 ? output.columns : 80;
   const countLines = (line: string) => Math.max(1, Math.ceil(line.length / width));
 
-  const title = `${ANSI.bold}Select a job to run${ANSI.reset}`;
+  const title = dryRun
+    ? `${ANSI.bold}Select a job to run ${ANSI.dim}(DRY RUN MODE)${ANSI.reset}`
+    : `${ANSI.bold}Select a job to run${ANSI.reset}`;
   const hint = `${ANSI.dim}↑/↓ move  Enter run  q cancel${ANSI.reset}`;
   output.write(`${title}\n${hint}\n\n`);
   renderedLines += countLines(title) + countLines(hint) + 1;
@@ -93,7 +118,7 @@ function renderMenu(jobs: JobEntry[], selectedIndex: number): number {
   return renderedLines;
 }
 
-async function chooseJobFromMenu(jobs: JobEntry[]): Promise<JobEntry | null> {
+async function chooseJobFromMenu(jobs: JobEntry[], dryRun: boolean): Promise<JobEntry | null> {
   if (!input.isTTY || !output.isTTY) return null;
 
   return await new Promise<JobEntry | null>((resolve) => {
@@ -105,7 +130,7 @@ async function chooseJobFromMenu(jobs: JobEntry[]): Promise<JobEntry | null> {
       if (renderedLines > 0) {
         clearRenderedLines(renderedLines);
       }
-      renderedLines = renderMenu(jobs, selectedIndex);
+      renderedLines = renderMenu(jobs, selectedIndex, dryRun);
     };
 
     const cleanup = (result: JobEntry | null) => {
@@ -161,7 +186,10 @@ async function chooseJobFromMenu(jobs: JobEntry[]): Promise<JobEntry | null> {
   });
 }
 
-async function chooseJobFromPrompt(jobs: JobEntry[]): Promise<JobEntry | null> {
+async function chooseJobFromPrompt(jobs: JobEntry[], dryRun: boolean): Promise<JobEntry | null> {
+  if (dryRun) {
+    console.log("DRY RUN MODE");
+  }
   console.log("Available jobs:");
   for (const [index, job] of jobs.entries()) {
     console.log(`  ${index + 1}. ${job.label} (${job.fileName})`);
@@ -183,16 +211,36 @@ async function chooseJobFromPrompt(jobs: JobEntry[]): Promise<JobEntry | null> {
   }
 }
 
-async function chooseJob(jobs: JobEntry[]): Promise<JobEntry | null> {
+async function chooseJob(jobs: JobEntry[], dryRun: boolean): Promise<JobEntry | null> {
   if (input.isTTY && output.isTTY) {
-    return chooseJobFromMenu(jobs);
+    return chooseJobFromMenu(jobs, dryRun);
   }
 
-  return chooseJobFromPrompt(jobs);
+  return chooseJobFromPrompt(jobs, dryRun);
 }
 
-async function runSelectedJob(job: JobEntry, forwardedArgs: string[]) {
-  const child = spawn("bun", ["run", `jobs/${job.fileName}`, ...forwardedArgs], {
+function withDryRunArgs(job: JobEntry, forwardedArgs: string[], dryRun: boolean): string[] {
+  if (!dryRun) {
+    return forwardedArgs;
+  }
+
+  if (!DRY_RUN_SUPPORTED_JOBS.has(job.label)) {
+    console.log(
+      `${ANSI.dim}Dry run requested, but '${job.label}' does not define a dry-run mode. Running normally.${ANSI.reset}`,
+    );
+    return forwardedArgs;
+  }
+
+  if (forwardedArgs.some((arg) => isDryRunFlag(arg))) {
+    return forwardedArgs;
+  }
+
+  return [...forwardedArgs, "--dry"];
+}
+
+async function runSelectedJob(job: JobEntry, forwardedArgs: string[], dryRun: boolean) {
+  const effectiveArgs = withDryRunArgs(job, forwardedArgs, dryRun);
+  const child = spawn("bun", ["run", `jobs/${job.fileName}`, ...effectiveArgs], {
     cwd: rootDir,
     stdio: "inherit",
   });
@@ -215,14 +263,14 @@ async function main() {
     process.exit(1);
   }
 
-  const [jobArg, ...forwardedArgs] = process.argv.slice(2);
+  const { dryRun, jobArg, forwardedArgs } = parseCliArgs(process.argv.slice(2));
 
   if (jobArg === "--help" || jobArg === "-h") {
     printHelp(jobs);
     return;
   }
 
-  const selected = jobArg ? resolveJobFromArg(jobs, jobArg) : await chooseJob(jobs);
+  const selected = jobArg ? resolveJobFromArg(jobs, jobArg) : await chooseJob(jobs, dryRun);
 
   if (!selected) {
     if (jobArg) {
@@ -232,8 +280,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`${ANSI.green}Running${ANSI.reset} ${ANSI.bold}${selected.label}${ANSI.reset}`);
-  await runSelectedJob(selected, forwardedArgs);
+  console.log(
+    `${ANSI.green}Running${ANSI.reset} ${ANSI.bold}${selected.label}${ANSI.reset}${
+      dryRun ? ` ${ANSI.dim}(dry run requested)${ANSI.reset}` : ""
+    }`,
+  );
+  await runSelectedJob(selected, forwardedArgs, dryRun);
 }
 
 main().catch((error) => {

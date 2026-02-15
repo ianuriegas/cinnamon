@@ -16,6 +16,10 @@ function getRequiredEnv(name: string): string {
 export const env = {
   databaseUrl: getRequiredEnv("DATABASE_URL"),
   redisUrl: process.env.REDIS_URL ?? DEFAULT_REDIS_URL,
+  spotifyAccessToken: process.env.SPOTIFY_ACCESS_TOKEN,
+  spotifyClientId: process.env.SPOTIFY_CLIENT_ID,
+  spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+  spotifyRefreshToken: process.env.SPOTIFY_REFRESH_TOKEN,
 };
 
 export const redisConnection = parseRedisConnection(env.redisUrl);

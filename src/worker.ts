@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { jobsLog } from "../db/schema/jobs-log.ts";
 import { runCinnamonJob } from "../jobs/cinnamon.ts";
+import { runSpotifyRecentlyPlayedJob } from "../jobs/spotify-recently-played.ts";
 import { jobsQueueName, redisConnection } from "./queue.ts";
 
 type JobData = Record<string, unknown>;
@@ -11,6 +12,7 @@ type JobHandler = (payload: JobData) => Promise<unknown>;
 
 const jobHandlers: Record<string, JobHandler> = {
   cinnamon: runCinnamonJob as JobHandler,
+  "spotify-recently-played": runSpotifyRecentlyPlayedJob as JobHandler,
 };
 
 async function upsertProcessingLog(job: Job<JobData>, jobId: string) {

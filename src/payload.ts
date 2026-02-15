@@ -8,5 +8,14 @@ export function parsePayloadArg(raw: string | undefined): Record<string, unknown
     return { start: parsedNumber };
   }
 
+  try {
+    const parsedJson = JSON.parse(raw);
+    if (parsedJson && typeof parsedJson === "object" && !Array.isArray(parsedJson)) {
+      return parsedJson as Record<string, unknown>;
+    }
+  } catch {
+    // Fall back to plain string payload below.
+  }
+
   return { value: raw };
 }

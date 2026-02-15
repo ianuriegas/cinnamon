@@ -9,6 +9,9 @@ async function main() {
   if (!jobName) {
     console.error("Usage: bun run trigger <job-name> [payload]");
     console.error("Example: bun run trigger cinnamon 10");
+    console.error(
+      'Example: bun run trigger spotify-recently-played \'{"dryRun":true,"spotifyUserId":"your_user_id"}\'',
+    );
     await jobsQueue.close();
     process.exit(1);
   }

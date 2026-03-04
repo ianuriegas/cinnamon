@@ -23,6 +23,7 @@ jobs:
           username: ${{ secrets.MAC_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
             cd ~/deployments/cinnamon
             git pull origin main
             docker compose up -d --build

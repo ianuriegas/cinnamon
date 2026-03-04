@@ -10,13 +10,13 @@ interface ScheduleEntry {
 const schedules: ScheduleEntry[] = [
   {
     schedulerId: "spotify-recently-played-every-30m",
-    pattern: "*/30 * * * *",
+    pattern: "0 * * * *", // Every hour (at :00 past each hour)
     jobName: "spotify-recently-played",
     data: {},
   },
   {
-    schedulerId: "spotify-top-tracks-every-6h",
-    pattern: "0 */6 * * *",
+    schedulerId: "spotify-top-tracks-daily",
+    pattern: "0 0 * * *", // Daily at 00:00 UTC
     jobName: "spotify-top-tracks",
     data: {},
   },

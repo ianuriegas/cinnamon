@@ -4,6 +4,8 @@ import { fetchTopTracks, type TimeRange } from "../api.ts";
 import { fetchSpotifyProfileUserId, getAccessToken } from "../auth.ts";
 import type { SpotifyTopTracksJobPayload, TopTrackItem } from "./types.ts";
 
+const ALL_TIME_RANGES: TimeRange[] = ["short_term", "medium_term", "long_term"];
+
 function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -27,14 +29,21 @@ function logFetchedItems(items: TopTrackItem[], timeRange: TimeRange) {
   }
 }
 
-export async function runSpotifyTopTracksJob(payload: SpotifyTopTracksJobPayload = {}) {
-  const accessToken = await getAccessToken();
-  const spotifyUserId = payload.spotifyUserId ?? (await fetchSpotifyProfileUserId(accessToken));
-  const timeRange: TimeRange = payload.timeRange ?? "medium_term";
-  const snapshotDate = todayDateString();
-
+async function runForTimeRange(
+  accessToken: string,
+  spotifyUserId: string,
+  timeRange: TimeRange,
+  snapshotDate: string,
+  dryRun: boolean,
+): Promise<{
+  timeRange: TimeRange;
+  fetched: number;
+  valid: number;
+  inserted: number;
+  duplicates: number;
+}> {
   console.log(
-    `Spotify top tracks: user=${spotifyUserId} timeRange=${timeRange} snapshot=${snapshotDate} dryRun=${payload.dryRun ?? false}`,
+    `Spotify top tracks: user=${spotifyUserId} timeRange=${timeRange} snapshot=${snapshotDate} dryRun=${dryRun}`,
   );
 
   const items = await fetchTopTracks(accessToken, timeRange);
@@ -57,32 +66,14 @@ export async function runSpotifyTopTracksJob(payload: SpotifyTopTracksJobPayload
 
   if (rows.length === 0) {
     console.log("Spotify top tracks: no valid rows to insert.");
-    return {
-      spotifyUserId,
-      timeRange,
-      snapshotDate,
-      fetched: items.length,
-      valid: 0,
-      inserted: 0,
-      duplicates: 0,
-      dryRun: payload.dryRun ?? false,
-    };
+    return { timeRange, fetched: items.length, valid: 0, inserted: 0, duplicates: 0 };
   }
 
-  if (payload.dryRun) {
+  if (dryRun) {
     console.log(
       `Spotify top tracks: dry run complete. valid=${rows.length}, inserted=0, duplicates=0`,
     );
-    return {
-      spotifyUserId,
-      timeRange,
-      snapshotDate,
-      fetched: items.length,
-      valid: rows.length,
-      inserted: 0,
-      duplicates: 0,
-      dryRun: true,
-    };
+    return { timeRange, fetched: items.length, valid: rows.length, inserted: 0, duplicates: 0 };
   }
 
   const insertedRows = await db
@@ -105,13 +96,36 @@ export async function runSpotifyTopTracksJob(payload: SpotifyTopTracksJobPayload
   );
 
   return {
-    spotifyUserId,
     timeRange,
-    snapshotDate,
     fetched: items.length,
     valid: rows.length,
     inserted: insertedRows.length,
     duplicates: rows.length - insertedRows.length,
-    dryRun: false,
+  };
+}
+
+export async function runSpotifyTopTracksJob(payload: SpotifyTopTracksJobPayload = {}) {
+  const accessToken = await getAccessToken();
+  const spotifyUserId = payload.spotifyUserId ?? (await fetchSpotifyProfileUserId(accessToken));
+  const snapshotDate = todayDateString();
+  const dryRun = payload.dryRun ?? false;
+
+  const timeRangesToRun: TimeRange[] = payload.timeRange ? [payload.timeRange] : ALL_TIME_RANGES;
+
+  console.log(
+    `Spotify top tracks: user=${spotifyUserId} timeRanges=[${timeRangesToRun.join(", ")}] snapshot=${snapshotDate} dryRun=${dryRun}`,
+  );
+
+  const results = await Promise.all(
+    timeRangesToRun.map((tr) =>
+      runForTimeRange(accessToken, spotifyUserId, tr, snapshotDate, dryRun),
+    ),
+  );
+
+  return {
+    spotifyUserId,
+    snapshotDate,
+    dryRun,
+    results,
   };
 }

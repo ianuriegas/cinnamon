@@ -8,7 +8,7 @@ Incrementally ingest listening history from Spotify's "Get Recently Played Track
 - Handler: `jobs/spotify/recently-played/ingest.ts`
 - Destination table: `spotify_recently_played`
 - Unique constraint: `(user_id, played_at)`
-- Schedule: every 30 minutes (via `src/scheduler.ts`)
+- Schedule: every hour (via `src/scheduler.ts`)
 
 ## Usage
 

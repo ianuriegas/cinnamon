@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: cinnamon-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-cinnamon}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
@@ -19,6 +20,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cinnamon-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -28,6 +30,50 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  migrate:
+    build: .
+    container_name: cinnamon-migrate
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cinnamon}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-cinnamon}
+      REDIS_URL: redis://redis:6379
+    command: ["bun", "run", "db:migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build: .
+    container_name: cinnamon-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cinnamon}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-cinnamon}
+      REDIS_URL: redis://redis:6379
+    command: ["bun", "run", "worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  scheduler:
+    build: .
+    container_name: cinnamon-scheduler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cinnamon}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-cinnamon}
+      REDIS_URL: redis://redis:6379
+    command: ["bun", "run", "scheduler"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

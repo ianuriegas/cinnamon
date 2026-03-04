@@ -15,6 +15,13 @@
       "when": 1771124338746,
       "tag": "0001_left_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772596524813,
+      "tag": "0002_illegal_cerebro",
+      "breakpoints": true
     }
   ]
 }

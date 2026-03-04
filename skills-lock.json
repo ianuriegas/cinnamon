@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "biome-js": {
+      "source": "paulrberg/agent-skills",
+      "sourceType": "github",
+      "computedHash": "30c995e907775ce3a727cbe00288a4fedbb24b8138e1165a51be309ef04799b0"
+    },
+    "bullmq-specialist": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "dfcf7f65fc8bf60081785acb0300a386d120dfe578bf8041d4209c8b9beb2d15"
+    },
+    "bun": {
+      "source": "hoodini/ai-agents-skills",
+      "sourceType": "github",
+      "computedHash": "f4411f5d9082c6c6a108bfc552dcb0e6dac09e16b65d38a896f7cedd4ec04204"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "computedHash": "6412eb4eb3b91595ebab937f0c69501240e7ba761b3d82510b5cf506ec5c7adc"
+    },
+    "postgres-drizzle": {
+      "source": "ccheney/robust-skills",
+      "sourceType": "github",
+      "computedHash": "60534e1aa880981e26360db836115df77a8e73be219c7a027e635802686b5bd9"
+    },
+    "spotify-api": {
+      "source": "fabioc-aloha/spotify-skill",
+      "sourceType": "github",
+      "computedHash": "54f34a7d6811a06f84a4d813a12f9e7448da39255302fafeb9d1c549332fb2f6"
+    },
+    "typescript-advanced-types": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "a03a83996ae9d2f4dd6d4db08899d61761c7d5351bce4c695d20a21197742a36"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { parseStart } from "../jobs/cinnamon.ts";
+import { parseStart } from "@/jobs/cinnamon/index.ts";
 
 describe("parseStart", () => {
   test("uses a positive integer start value", () => {

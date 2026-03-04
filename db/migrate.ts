@@ -2,10 +2,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { Pool } from "pg";
-import { env } from "../config/env.ts";
 
-const pool = new Pool({ connectionString: env.databaseUrl });
+import { pool } from "./connection.ts";
+
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.resolve(currentDir, "migrations");
 

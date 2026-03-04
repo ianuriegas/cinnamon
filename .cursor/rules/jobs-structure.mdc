@@ -1,0 +1,40 @@
+---
+description: Job folder structure conventions for the jobs/ directory
+globs: jobs/**
+alwaysApply: false
+---
+
+# Job Structure
+
+Two patterns exist for organizing jobs:
+
+## Leaf jobs
+
+Simple jobs live directly in `jobs/<name>/index.ts` (e.g. `jobs/cinnamon/`).
+
+## Provider groups
+
+Jobs that share infrastructure (auth, API client) are grouped under a provider directory with nested subfolders per job:
+
+```
+jobs/spotify/
+  auth.ts                    # shared auth logic
+  api.ts                     # shared API client
+  types.ts                   # shared types (e.g. SpotifyProfileResponse)
+  recently-played/
+    index.ts                 # entrypoint
+    ingest.ts                # job logic
+    types.ts                 # job-specific types and payload
+  top-tracks/
+    index.ts
+    ingest.ts
+    types.ts
+```
+
+## Conventions
+
+- `jobs/_shared/` contains utilities shared across all jobs (e.g. `isDirectExecution`). Prefixed with `_` so the job runner skips it.
+- Every job entrypoint (`index.ts`) must use `isDirectExecution(import.meta.url)` to support standalone execution via `bun run jobs/<path>/index.ts`.
+- `jobs/registry.ts` maps BullMQ job names to handler functions. Register every new job here.
+- Job-specific types go in the job's own `types.ts`. Shared provider types stay at the provider level.
+- Use `../api.ts` and `../auth.ts` for shared provider imports within nested jobs. Use `@/db/...` and `@/config/...` for cross-directory imports.

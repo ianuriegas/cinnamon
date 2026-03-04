@@ -1,5 +1,4 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 import { parsePayloadArg } from "./payload.ts";
 import { jobsQueue } from "./queue.ts";
 
@@ -23,10 +22,7 @@ async function main() {
   await jobsQueue.close();
 }
 
-const isDirectExecution =
-  process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-
-if (isDirectExecution) {
+if (isDirectExecution(import.meta.url)) {
   main().catch(async (error) => {
     console.error("Failed to queue job:", error);
     await jobsQueue.close();

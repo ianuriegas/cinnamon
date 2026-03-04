@@ -24,10 +24,17 @@ Automated deployment via GitHub Actions. Pushes to `main` that pass CI checks ar
 
 3. **OrbStack**: Ensure [OrbStack](https://orbstack.dev) is installed and running.
 
-4. **Clone the repo**:
+4. **Clone the repo** using SSH (required for non-interactive `git pull` during deploys):
 
    ```bash
-   gh repo clone ianuriegas/cinnamon ~/deployments/cinnamon
+   git clone git@github.com:ianuriegas/cinnamon.git ~/deployments/cinnamon
+   ```
+
+   If already cloned via HTTPS, switch the remote:
+
+   ```bash
+   cd ~/deployments/cinnamon
+   git remote set-url origin git@github.com:ianuriegas/cinnamon.git
    ```
 
 5. **Create `.env`** on the target MacBook at `~/deployments/cinnamon/.env` with your production values (see `.env.example` for the template). This file is managed manually on the target machine.
@@ -66,10 +73,10 @@ gh workflow run deploy
 
 ### Deploy workflow didn't trigger
 
-The deploy workflow uses `workflow_run` and only fires when the Checks workflow completes on `main`. Check:
+The deploy workflow triggers on push to `main` and manual `workflow_dispatch`. Check:
 
 - The push was to `main` (not a feature branch).
-- The Checks workflow passed (deploy skips on failure).
+- The workflow file exists on `main`.
 
 ### SSH connection refused
 

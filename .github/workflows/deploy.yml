@@ -22,6 +22,7 @@ jobs:
           host: ${{ secrets.MAC_IP }}
           username: ${{ secrets.MAC_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
           script: |
             export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
             cd ~/deployments/cinnamon

@@ -2,7 +2,9 @@ import { spawn } from "node:child_process";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { intro, isCancel, log, outro, select } from "@clack/prompts";
+import { isCancel } from "@clack/core";
+import { intro, log, outro } from "@clack/prompts";
+import { type TreeNode, treeSelect } from "./_tree-select.ts";
 import { fileExists } from "./_utils.ts";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
@@ -37,37 +39,52 @@ function parseCliArgs(rawArgs: string[]) {
   return { dryRun, jobArg, forwardedArgs };
 }
 
-async function listJobs(): Promise<JobEntry[]> {
-  const entries = await readdir(jobsDir, { withFileTypes: true });
+async function listJobs(dir = jobsDir, prefix = ""): Promise<JobEntry[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
   const jobs: JobEntry[] = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
 
-    const indexPath = path.join(jobsDir, entry.name, "index.ts");
+    const entryDir = path.join(dir, entry.name);
+    const label = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const indexPath = path.join(entryDir, "index.ts");
+
     if (await fileExists(indexPath)) {
-      jobs.push({
-        label: entry.name,
-        entrypoint: `${entry.name}/index.ts`,
-      });
-      continue;
-    }
-
-    const subEntries = await readdir(path.join(jobsDir, entry.name), { withFileTypes: true });
-    for (const sub of subEntries) {
-      if (!sub.isDirectory() || sub.name.startsWith("_")) continue;
-
-      const subIndexPath = path.join(jobsDir, entry.name, sub.name, "index.ts");
-      if (await fileExists(subIndexPath)) {
-        jobs.push({
-          label: `${entry.name}/${sub.name}`,
-          entrypoint: `${entry.name}/${sub.name}/index.ts`,
-        });
-      }
+      jobs.push({ label, entrypoint: `${label}/index.ts` });
+    } else {
+      jobs.push(...(await listJobs(entryDir, label)));
     }
   }
 
   return jobs.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function buildJobTree(jobs: JobEntry[]): TreeNode<JobEntry>[] {
+  const root: TreeNode<JobEntry>[] = [];
+
+  for (const job of jobs) {
+    const segments = job.label.split("/");
+    let siblings = root;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const isLeaf = i === segments.length - 1;
+      let existing = siblings.find((n) => n.label === segment);
+
+      if (!existing) {
+        existing = isLeaf ? { label: segment, value: job } : { label: segment, children: [] };
+        siblings.push(existing);
+      }
+
+      if (!isLeaf) {
+        existing.children ??= [];
+        siblings = existing.children;
+      }
+    }
+  }
+
+  return root;
 }
 
 function resolveJobFromArg(jobs: JobEntry[], arg: string): JobEntry | null {
@@ -150,12 +167,10 @@ async function main() {
   } else {
     intro(dryRun ? "Select a job to run (DRY RUN)" : "Select a job to run");
 
-    const result = await select({
+    const tree = buildJobTree(jobs);
+    const result = await treeSelect<JobEntry>({
       message: "Pick a job",
-      options: jobs.map((job) => ({
-        value: job,
-        label: job.label,
-      })),
+      tree,
     });
 
     if (isCancel(result)) {

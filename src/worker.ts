@@ -1,19 +1,12 @@
 import { type Job, Worker } from "bullmq";
 import { eq } from "drizzle-orm";
 
-import { db } from "../db/index.ts";
-import { jobsLog } from "../db/schema/jobs-log.ts";
-import { runCinnamonJob } from "../jobs/cinnamon.ts";
-import { runSpotifyRecentlyPlayedJob } from "../jobs/spotify-recently-played.ts";
-import { jobsQueueName, redisConnection } from "./queue.ts";
-
-type JobData = Record<string, unknown>;
-type JobHandler = (payload: JobData) => Promise<unknown>;
-
-const jobHandlers: Record<string, JobHandler> = {
-  cinnamon: runCinnamonJob as JobHandler,
-  "spotify-recently-played": runSpotifyRecentlyPlayedJob as JobHandler,
-};
+import { getRedisConnection } from "@/config/env.ts";
+import { db, pool } from "@/db/index.ts";
+import { jobsLog } from "@/db/schema/jobs-log.ts";
+import { jobHandlers } from "@/jobs/registry.ts";
+import { JOB_STATUS, type JobData } from "./job-types.ts";
+import { jobsQueueName } from "./queue.ts";
 
 async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
   try {
@@ -23,7 +16,7 @@ async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
         jobId,
         queueName: jobsQueueName,
         jobName: job.name,
-        status: "processing",
+        status: JOB_STATUS.processing,
         payload: job.data,
         startedAt: new Date(),
         finishedAt: null,
@@ -33,7 +26,7 @@ async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
       .onConflictDoUpdate({
         target: jobsLog.jobId,
         set: {
-          status: "processing",
+          status: JOB_STATUS.processing,
           payload: job.data,
           startedAt: new Date(),
           finishedAt: null,
@@ -51,7 +44,7 @@ async function markCompleted(jobId: string, result: unknown) {
     await db
       .update(jobsLog)
       .set({
-        status: "completed",
+        status: JOB_STATUS.completed,
         result: result ?? null,
         error: false,
         finishedAt: new Date(),
@@ -67,7 +60,7 @@ async function markFailed(jobId: string, error: Error) {
     await db
       .update(jobsLog)
       .set({
-        status: "failed",
+        status: JOB_STATUS.failed,
         error: true,
         result: { message: error.message },
         finishedAt: new Date(),
@@ -94,7 +87,7 @@ export const worker = new Worker<JobData>(
 
     return handler(job.data);
   },
-  { connection: redisConnection },
+  { connection: getRedisConnection(), concurrency: 5 },
 );
 
 worker.on("completed", async (job, result) => {
@@ -119,6 +112,7 @@ worker.on("failed", async (job, error) => {
 
 const shutdown = async () => {
   await worker.close();
+  await pool.end();
   process.exit(0);
 };
 

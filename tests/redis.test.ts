@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { parseRedisConnection } from "../config/redis.ts";
+import { parseRedisConnection } from "@/config/redis.ts";
 
 describe("parseRedisConnection", () => {
   test("parses a valid redis url", () => {

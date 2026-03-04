@@ -1,12 +1,10 @@
 /**
- * Standalone cinnamon countdown script.
- * Runs directly - no worker or Redis needed.
+ * Cinnamon countdown job.
  *
- * Usage: bun run jobs/cinnamon.ts [start]
+ * Usage: bun run jobs/cinnamon/index.ts [start]
  */
 
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 
 const DEFAULT_START = 10;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,10 +48,7 @@ export async function runCinnamonJob(payload: CinnamonJobPayload = {}) {
   await spinCinnamon();
 }
 
-const isDirectExecution =
-  process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-
-if (isDirectExecution) {
+if (isDirectExecution(import.meta.url)) {
   const start = parseStart(process.argv[2]);
   runCinnamonJob({ start }).catch((error) => {
     console.error("Countdown job failed:", error);

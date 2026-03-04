@@ -3,8 +3,6 @@
 
 node_modules/
 package-lock.json
-src/**/*.js
-db/**/*.js
 
 local/
 .DS_Store

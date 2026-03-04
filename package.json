@@ -11,13 +11,14 @@
     "db:reset-local": "bun run scripts/db-reset-local.ts",
     "format": "biome format --write .",
     "job": "bun run scripts/run-jobs.ts",
-    "job:cinnamon": "bun run jobs/cinnamon.ts",
+    "job:cinnamon": "bun run jobs/cinnamon/index.ts",
     "job:dry": "bun run scripts/run-jobs.ts --dry",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "bun test",
     "trigger": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
+    "auth:spotify": "bun run scripts/spotify-auth.ts",
     "worker": "bun run src/worker.ts"
   },
   "repository": {
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
+    "@clack/prompts": "^1.1.0",
     "@types/node": "^25.2.2",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.4",

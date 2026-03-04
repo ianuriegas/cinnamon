@@ -19,6 +19,7 @@
     "trigger": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "auth:spotify": "bun run scripts/spotify-auth.ts",
+    "scheduler": "bun run src/scheduler.ts",
     "worker": "bun run src/worker.ts"
   },
   "repository": {

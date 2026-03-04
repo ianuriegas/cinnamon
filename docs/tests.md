@@ -1,29 +1,17 @@
 # Tests
 
-This project uses Bun's test runner for unit-level checks.
+Uses Bun's built-in test runner. Run with `bun test`.
 
-## Run tests
+## Current coverage
 
-```bash
-bun run test
-```
+- `src/payload.ts` -- payload parsing (`parsePayloadArg`)
+- `config/redis.ts` -- Redis URL parsing (`parseRedisConnection`)
+- `jobs/cinnamon/` -- start value parsing (`parseStart`)
+- `jobs/spotify/recently-played/` -- `afterMs` cursor validation (`toValidAfterMs`)
+- `jobs/_shared/` -- direct execution detection (`isDirectExecution`)
 
-You can also run all quality checks before committing:
+## Recommended next tests
 
-```bash
-bun run typecheck
-bun run lint
-bun run test
-```
-
-## Current test coverage (areas)
-
-- `src/index.ts`: payload parsing logic (`parsePayloadArg`)
-- `config/redis.ts`: Redis connection URL parsing (`parseRedisConnection`)
-- `jobs/cinnamon.ts`: start value parsing (`parseStart`)
-
-## Next recommended tests
-
-- Worker integration test that enqueues a job and verifies `jobs_log` transitions to `completed`
-- Failure-path integration test that verifies `jobs_log` transitions to `failed`
-- Queue retention integration test that confirms completed/failed jobs are removed after retention age
+- Worker integration: enqueue a job and verify `jobs_log` transitions to `completed`
+- Failure path: verify `jobs_log` transitions to `failed`
+- Queue retention: confirm completed/failed jobs are removed after retention age

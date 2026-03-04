@@ -16,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "f4411f5d9082c6c6a108bfc552dcb0e6dac09e16b65d38a896f7cedd4ec04204"
     },
+    "docs-cleaner": {
+      "source": "daymade/claude-code-skills",
+      "sourceType": "github",
+      "computedHash": "15015dbc1b74cc98dd522ce55a385e004a62e3ff9dd884506ed036064a28a795"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",

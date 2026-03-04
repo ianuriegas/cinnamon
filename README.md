@@ -7,10 +7,12 @@ Backend-first BullMQ demo where queued jobs are processed by a worker and logged
 
 ## Architecture
 
-```
-trigger CLI ──> BullMQ queue (Redis) ──> worker ──> job handler
-                                            │
-                                            └──> jobs_log (Postgres)
+```mermaid
+flowchart LR
+  Trigger["trigger CLI"] --> Queue["BullMQ queue (Redis)"]
+  Queue --> Worker[worker]
+  Worker --> Handler[job handler]
+  Worker --> JobsLog["jobs_log (Postgres)"]
 ```
 
 1. **Trigger** (`src/index.ts`) parses CLI args and enqueues a named job via BullMQ.
@@ -63,7 +65,12 @@ Spotify recently played ingestion:
 bun run trigger spotify-recently-played '{"dryRun":true}'
 ```
 
-There is currently no built-in cron scheduler; enqueue `spotify-recently-played` manually or from external automation. A production 30-minute cron/repeat setup will be implemented later.
+The scheduler (`src/scheduler.ts`) automatically enqueues repeatable jobs via BullMQ:
+
+- `spotify-recently-played` — every 30 minutes
+- `spotify-top-tracks` — every 6 hours
+
+Run locally with `bun run scheduler`, or deploy via Docker (see below).
 
 ## Project structure
 
@@ -111,6 +118,7 @@ docs/             Ops documentation (Postgres, Redis, Spotify, tests)
 - `bun run test` — run test suite.
 - `bun run trigger <job-name> [payload]` — enqueue a named BullMQ job.
 - `bun run typecheck` — run TypeScript checks.
+- `bun run scheduler` — register cron schedules and keep them alive.
 - `bun run worker` — process queued jobs.
 
 </details>
@@ -119,12 +127,42 @@ docs/             Ops documentation (Postgres, Redis, Spotify, tests)
 
 - [Postgres checks](docs/postgres.md)
 - [Redis checks](docs/redis.md)
+- [Spotify OAuth](docs/spotify-auth.md)
 - [Spotify recently played ingestion](docs/spotify-recently-played.md)
 - [Tests guide](docs/tests.md)
 
-## Local-only docs
+## Docker deployment
 
-The `local/` directory (gitignored) contains personal setup notes:
+Run the full stack (Postgres, Redis, worker, scheduler) with a single command:
 
-- `local/kubernetes.md` — Kind cluster setup
-- `local/spotify.md` — Spotify OAuth refresh token walkthrough
+```bash
+cp .env.example .env   # then fill in Spotify credentials
+docker compose up -d
+```
+
+This will:
+
+1. Start Postgres and Redis
+2. Run database migrations (one-shot `migrate` container)
+3. Start the worker and scheduler
+
+Monitor logs:
+
+```bash
+docker compose logs -f worker scheduler
+```
+
+Rebuild after code changes:
+
+```bash
+docker compose up -d --build
+```
+
+### Deploying to a remote machine
+
+1. Install Docker and Docker Compose on the target machine.
+2. Clone the repo and create `.env` from `.env.example`.
+3. No changes needed for `DATABASE_URL` or `REDIS_URL` — `docker-compose.yml` overrides them to use internal container hostnames (`postgres`, `redis`).
+4. Fill in `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REFRESH_TOKEN`.
+5. Run `docker compose up -d`.
+

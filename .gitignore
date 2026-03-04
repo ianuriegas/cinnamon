@@ -7,3 +7,4 @@ src/**/*.js
 db/**/*.js
 
 local/
+.DS_Store

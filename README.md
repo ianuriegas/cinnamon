@@ -67,8 +67,8 @@ bun run trigger spotify-recently-played '{"dryRun":true}'
 
 The scheduler (`src/scheduler.ts`) automatically enqueues repeatable jobs via BullMQ:
 
-- `spotify-recently-played` — every 30 minutes
-- `spotify-top-tracks` — every 6 hours
+- `spotify-recently-played` — every hour
+- `spotify-top-tracks` — daily (00:00 UTC)
 
 Run locally with `bun run scheduler`, or deploy via Docker (see below).
 

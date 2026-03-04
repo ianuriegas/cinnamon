@@ -67,6 +67,6 @@ bun run lint             # exits 0, no issues
 3. Create and switch to a feature branch
 4. Stage relevant files (`git add`)
 5. Commit with the format above
-6. Push with `git push -u origin HEAD`
-7. Open PR with `gh pr create` using the PR body format above
+6. Push with `git push -u origin HEAD` (use `required_permissions: ["all"]`)
+7. Open PR with `gh pr create` using the PR body format above (use `required_permissions: ["all"]`)
 8. Return the PR URL to the user

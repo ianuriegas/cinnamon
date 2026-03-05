@@ -11,6 +11,9 @@ async function main() {
     console.error(
       'Example: bun run trigger spotify-recently-played \'{"dryRun":true,"spotifyUserId":"your_user_id"}\'',
     );
+    console.error(
+      'Example: bun run trigger shell \'{"command":"python3","args":["./jobs/shell/scripts/hello.py"]}\'',
+    );
     await jobsQueue.close();
     process.exit(1);
   }

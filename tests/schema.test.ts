@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { after, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 
-import { db, pool } from "@/db/index.ts";
+import { db } from "@/db/index.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
@@ -17,7 +17,6 @@ describe("Phase 2 schema", () => {
     await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
     await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
     await db.delete(teams).where(eq(teams.id, testTeamId));
-    await pool.end();
   });
 
   test("can insert and query a team", async () => {

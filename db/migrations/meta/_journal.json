@@ -22,6 +22,13 @@
       "when": 1772596524813,
       "tag": "0002_illegal_cerebro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772674534153,
+      "tag": "0003_omniscient_sentinels",
+      "breakpoints": true
     }
   ]
 }

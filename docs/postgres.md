@@ -66,6 +66,19 @@ FROM spotify_top_tracks ORDER BY snapshot_date DESC, rank LIMIT 20;
 
 ## Remote job triggering
 
+### Via HTTP API
+
+The preferred way to trigger jobs remotely. Requires a valid API key (see `bun run scripts/seed-default-team.ts`):
+
+```bash
+curl -X POST http://<tailscale-ip>:3000/v1/enqueue \
+  -H "Authorization: Bearer cin_<your_key>" \
+  -H "Content-Type: application/json" \
+  -d '{"jobName": "spotify-recently-played"}'
+```
+
+### Via SSH + Docker
+
 SSH into the target MacBook and use `docker compose exec` to enqueue jobs on the running worker:
 
 ```bash
@@ -85,8 +98,10 @@ ssh <mac-user>@<tailscale-ip> "cd ~/deployments/cinnamon && docker compose exec 
 
 ## Tables
 
-| Table                       | Purpose                            |
-| --------------------------- | ---------------------------------- |
-| `jobs_log`                  | Durable log of all processed jobs  |
-| `spotify_recently_played`   | Deduplicated Spotify listen history |
-| `spotify_top_tracks`        | Daily top tracks snapshots by time range |
+| Table                       | Purpose                                   |
+| --------------------------- | ----------------------------------------- |
+| `teams`                     | Tenant/team registry                      |
+| `api_keys`                  | Hashed API keys linked to teams           |
+| `jobs_log`                  | Durable log of all processed jobs         |
+| `spotify_recently_played`   | Deduplicated Spotify listen history       |
+| `spotify_top_tracks`        | Daily top tracks snapshots by time range  |

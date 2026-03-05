@@ -15,10 +15,13 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
+const DEFAULT_PORT = 3000;
+
 function loadEnv() {
   return {
     databaseUrl: getRequiredEnv("DATABASE_URL"),
     redisUrl: process.env.REDIS_URL ?? DEFAULT_REDIS_URL,
+    port: Number(process.env.PORT) || DEFAULT_PORT,
     spotifyAccessToken: process.env.SPOTIFY_ACCESS_TOKEN,
     spotifyClientId: process.env.SPOTIFY_CLIENT_ID,
     spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET,

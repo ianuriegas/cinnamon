@@ -1,7 +1,9 @@
-import { boolean, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { teams } from "./teams.ts";
 
 export const jobsLog = pgTable("jobs_log", {
   id: serial("id").primaryKey(),
+  teamId: integer("team_id").references(() => teams.id),
   jobId: text("job_id").notNull().unique(),
   queueName: text("queue_name").notNull(),
   jobName: text("job_name").notNull(),

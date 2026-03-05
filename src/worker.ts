@@ -14,6 +14,7 @@ async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
       .insert(jobsLog)
       .values({
         jobId,
+        teamId: (job.data.teamId as number) ?? null,
         queueName: jobsQueueName,
         jobName: job.name,
         status: JOB_STATUS.processing,
@@ -26,6 +27,7 @@ async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
       .onConflictDoUpdate({
         target: jobsLog.jobId,
         set: {
+          teamId: (job.data.teamId as number) ?? null,
           status: JOB_STATUS.processing,
           payload: job.data,
           startedAt: new Date(),

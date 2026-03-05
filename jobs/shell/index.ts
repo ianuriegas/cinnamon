@@ -14,16 +14,18 @@ export interface ShellJobPayload {
   command: string;
   args?: string[];
   timeoutMs?: number;
+  parseJsonOutput?: boolean;
 }
 
 export interface ShellJobResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  parsed?: Record<string, unknown> | null;
 }
 
 function validatePayload(payload: Record<string, unknown>): Required<ShellJobPayload> {
-  const { command, args, timeoutMs } = payload;
+  const { command, args, timeoutMs, parseJsonOutput } = payload;
   if (typeof command !== "string" || command.trim() === "") {
     throw new Error("Shell job requires a non-empty 'command' string in the payload");
   }
@@ -31,11 +33,31 @@ function validatePayload(payload: Record<string, unknown>): Required<ShellJobPay
     command,
     args: Array.isArray(args) ? args.map(String) : [],
     timeoutMs: typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    parseJsonOutput: parseJsonOutput === true,
   };
 }
 
+/**
+ * Scans stdout lines in reverse for the last valid JSON object.
+ * Allows scripts to emit logs before their final structured result.
+ */
+function extractJson(stdout: string): Record<string, unknown> | null {
+  const lines = stdout.trimEnd().split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line.startsWith("{")) continue;
+    try {
+      const obj = JSON.parse(line);
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
+    } catch {
+      // not valid JSON, try previous line
+    }
+  }
+  return null;
+}
+
 export async function runShellJob(payload: Record<string, unknown>): Promise<ShellJobResult> {
-  const { command, args, timeoutMs } = validatePayload(payload);
+  const { command, args, timeoutMs, parseJsonOutput } = validatePayload(payload);
 
   console.log(`[shell] Running: ${command} ${args.join(" ")}`);
 
@@ -77,6 +99,13 @@ export async function runShellJob(payload: Record<string, unknown>): Promise<She
         const msg = stderr.trim() || `Process exited with code ${exitCode}`;
         reject(Object.assign(new Error(msg), { result }));
         return;
+      }
+
+      if (parseJsonOutput) {
+        result.parsed = extractJson(stdout);
+        if (result.parsed === null) {
+          console.warn("[shell] parseJsonOutput enabled but no valid JSON found in stdout");
+        }
       }
 
       if (stdout) console.log(`[shell] stdout: ${stdout.trimEnd()}`);

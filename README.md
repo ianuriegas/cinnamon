@@ -101,6 +101,26 @@ curl -X POST http://localhost:3000/v1/enqueue \
   -d '{"jobName": "shell", "data": {"command": "python3", "args": ["./jobs/shell/scripts/hello.py"]}}'
 ```
 
+#### Structured JSON output
+
+Scripts can return structured results by printing a JSON object on the last line of stdout. Set `parseJsonOutput: true` in the job payload to have the worker parse it:
+
+```bash
+curl -X POST http://localhost:3000/v1/enqueue \
+  -H "Authorization: Bearer cin_<your_key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jobName": "shell",
+    "data": {
+      "command": "python3",
+      "args": ["./jobs/shell/scripts/example-json.py"],
+      "parseJsonOutput": true
+    }
+  }'
+```
+
+The parsed object is saved to `jobs_log.result.parsed`. See [Writing scripts](docs/writing-scripts.md) for the full output contract.
+
 ### Spotify jobs
 
 Spotify recently played ingestion:
@@ -218,6 +238,7 @@ docs/               Ops documentation (Postgres, Redis, Spotify, tests, deploy)
 - [Spotify recently played ingestion](docs/spotify-recently-played.md)
 - [Tests guide](docs/tests.md)
 - [Deployment](docs/deploy.md)
+- [Writing scripts](docs/writing-scripts.md)
 
 ## Docker deployment
 

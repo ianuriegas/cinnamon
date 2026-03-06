@@ -3,12 +3,15 @@ import { eq } from "drizzle-orm";
 
 import { getJobHandlers } from "@/config/dynamic-registry.ts";
 import { getRedisConnection } from "@/config/env.ts";
+import { loadConfig } from "@/config/load-config.ts";
 import { db, pool } from "@/db/index.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { JOB_STATUS, type JobData } from "./job-types.ts";
+import { fireNotifications, type JobEvent } from "./notifications.ts";
 import { jobsQueueName } from "./queue.ts";
 
 const jobHandlers = await getJobHandlers();
+const config = await loadConfig();
 
 async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
   try {
@@ -102,6 +105,20 @@ worker.on("completed", async (job, result) => {
   }
 
   await markCompleted(String(job.id), result);
+
+  const notifications = config.jobs[job.name]?.notifications;
+  if (notifications?.on_success?.length) {
+    const event: JobEvent = {
+      jobName: job.name,
+      jobId: String(job.id),
+      status: "completed",
+      durationMs: job.finishedOn && job.processedOn ? job.finishedOn - job.processedOn : null,
+      result,
+    };
+    fireNotifications(notifications, event).catch((err) => {
+      console.error(`[notifications] Error dispatching for job ${job.id}:`, err);
+    });
+  }
 });
 
 worker.on("failed", async (job, error) => {
@@ -112,6 +129,20 @@ worker.on("failed", async (job, error) => {
   }
 
   await markFailed(String(job.id), error);
+
+  const notifications = config.jobs[job.name]?.notifications;
+  if (notifications?.on_failure?.length) {
+    const event: JobEvent = {
+      jobName: job.name,
+      jobId: String(job.id),
+      status: "failed",
+      durationMs: job.finishedOn && job.processedOn ? job.finishedOn - job.processedOn : null,
+      error: error.message,
+    };
+    fireNotifications(notifications, event).catch((err) => {
+      console.error(`[notifications] Error dispatching for job ${job.id}:`, err);
+    });
+  }
 });
 
 const shutdown = async () => {

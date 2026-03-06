@@ -1,4 +1,4 @@
-import type { CinnamonConfig, JobDefinition } from "./define-config.ts";
+import type { CinnamonConfig, JobDefinition, WebhookTarget } from "./define-config.ts";
 
 const DURATION_PATTERN = /^(\d+)(ms|s|m|h)$/;
 
@@ -31,6 +31,25 @@ function validateCronExpression(jobName: string, expression: string): void {
   if (fields.length !== CRON_FIELD_COUNT) {
     throw new Error(
       `Job "${jobName}": invalid cron expression "${expression}". Expected ${CRON_FIELD_COUNT} fields (minute hour day-of-month month day-of-week), got ${fields.length}`,
+    );
+  }
+}
+
+function validateWebhookTarget(
+  jobName: string,
+  event: string,
+  index: number,
+  target: unknown,
+): asserts target is WebhookTarget {
+  if (!target || typeof target !== "object" || Array.isArray(target)) {
+    throw new Error(
+      `Job "${jobName}": notifications.${event}[${index}] must be an object with a "url" field`,
+    );
+  }
+  const t = target as Record<string, unknown>;
+  if (typeof t.url !== "string" || t.url.trim() === "") {
+    throw new Error(
+      `Job "${jobName}": notifications.${event}[${index}].url must be a non-empty string`,
     );
   }
 }
@@ -95,6 +114,23 @@ function validateJobDefinition(name: string, def: unknown): JobDefinition {
       throw new Error(`Job "${name}": "schedule" must be a cron string`);
     }
     validateCronExpression(name, d.schedule);
+  }
+
+  if (d.notifications !== undefined) {
+    if (!d.notifications || typeof d.notifications !== "object" || Array.isArray(d.notifications)) {
+      throw new Error(`Job "${name}": "notifications" must be an object`);
+    }
+    const n = d.notifications as Record<string, unknown>;
+    for (const event of ["on_failure", "on_success"] as const) {
+      if (n[event] !== undefined) {
+        if (!Array.isArray(n[event])) {
+          throw new Error(`Job "${name}": "notifications.${event}" must be an array`);
+        }
+        for (const [i, target] of (n[event] as unknown[]).entries()) {
+          validateWebhookTarget(name, event, i, target);
+        }
+      }
+    }
   }
 
   return d as unknown as JobDefinition;

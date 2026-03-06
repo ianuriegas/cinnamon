@@ -1,3 +1,12 @@
+export interface WebhookTarget {
+  url: string;
+}
+
+export interface NotificationConfig {
+  on_failure?: WebhookTarget[];
+  on_success?: WebhookTarget[];
+}
+
 export interface JobDefinition {
   command: string;
   /** Appended as the first argument to command (e.g. "./scripts/hello.py"). */
@@ -10,8 +19,9 @@ export interface JobDefinition {
   cwd?: string;
   description?: string;
   parseJsonOutput?: boolean;
-  /** Cron expression for scheduled execution (used by scheduler in Phase 5). */
+  /** Cron expression for scheduled execution. */
   schedule?: string;
+  notifications?: NotificationConfig;
 }
 
 export interface CinnamonConfig {

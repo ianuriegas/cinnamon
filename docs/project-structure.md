@@ -45,6 +45,7 @@ src/
   scheduler.ts        Cron schedule registration
   auth.ts             API key verification (SHA-256 hash lookup)
   job-types.ts        Shared job type definitions
+  notifications.ts    Webhook dispatcher (Discord, Slack, generic) with retry
   payload.ts          CLI payload parsing
   middleware/
     auth.ts           Bearer token auth middleware for Hono
@@ -112,7 +113,7 @@ docker compose up -d --build
 1. Install Docker and Docker Compose on the target machine.
 2. Clone the repo and create `.env` from `.env.example`.
 3. No changes needed for `DATABASE_URL` or `REDIS_URL` -- `docker-compose.yml` overrides them to use internal container hostnames (`postgres`, `redis`).
-4. Fill in `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REFRESH_TOKEN`.
+4. Fill in `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`, and any webhook URLs (`DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`).
 5. Run `docker compose up -d`.
 
 For CI/CD deployment, see [Deployment](deploy.md).

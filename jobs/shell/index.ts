@@ -9,21 +9,32 @@ import { spawn } from "node:child_process";
 import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const LOG_PREVIEW_LIMIT = 200;
+
+function truncate(text: string, limit = LOG_PREVIEW_LIMIT): string {
+  const trimmed = text.trimEnd();
+  if (trimmed.length <= limit) return trimmed;
+  return `${trimmed.slice(0, limit)}... (truncated, ${trimmed.length} bytes total)`;
+}
 
 export interface ShellJobPayload {
   command: string;
   args?: string[];
   timeoutMs?: number;
+  parseJsonOutput?: boolean;
+  env?: Record<string, string>;
+  cwd?: string;
 }
 
 export interface ShellJobResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  parsed?: Record<string, unknown> | null;
 }
 
 function validatePayload(payload: Record<string, unknown>): Required<ShellJobPayload> {
-  const { command, args, timeoutMs } = payload;
+  const { command, args, timeoutMs, parseJsonOutput, env, cwd } = payload;
   if (typeof command !== "string" || command.trim() === "") {
     throw new Error("Shell job requires a non-empty 'command' string in the payload");
   }
@@ -31,16 +42,45 @@ function validatePayload(payload: Record<string, unknown>): Required<ShellJobPay
     command,
     args: Array.isArray(args) ? args.map(String) : [],
     timeoutMs: typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    parseJsonOutput: parseJsonOutput === true,
+    env:
+      env && typeof env === "object" && !Array.isArray(env)
+        ? (env as Record<string, string>)
+        : (undefined as unknown as Record<string, string>),
+    cwd: typeof cwd === "string" ? cwd : (undefined as unknown as string),
   };
 }
 
+/**
+ * Scans stdout lines in reverse for the last valid JSON object.
+ * Allows scripts to emit logs before their final structured result.
+ */
+function extractJson(stdout: string): Record<string, unknown> | null {
+  const lines = stdout.trimEnd().split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line.startsWith("{")) continue;
+    try {
+      const obj = JSON.parse(line);
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
+    } catch {
+      // not valid JSON, try previous line
+    }
+  }
+  return null;
+}
+
 export async function runShellJob(payload: Record<string, unknown>): Promise<ShellJobResult> {
-  const { command, args, timeoutMs } = validatePayload(payload);
+  const { command, args, timeoutMs, parseJsonOutput, env, cwd } = validatePayload(payload);
 
   console.log(`[shell] Running: ${command} ${args.join(" ")}`);
 
   return new Promise<ShellJobResult>((resolve, reject) => {
-    const proc = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: env ? { ...process.env, ...env } : undefined,
+      cwd: cwd || undefined,
+    });
 
     let stdout = "";
     let stderr = "";
@@ -79,8 +119,20 @@ export async function runShellJob(payload: Record<string, unknown>): Promise<She
         return;
       }
 
-      if (stdout) console.log(`[shell] stdout: ${stdout.trimEnd()}`);
-      if (stderr) console.log(`[shell] stderr: ${stderr.trimEnd()}`);
+      if (parseJsonOutput) {
+        result.parsed = extractJson(stdout);
+        if (result.parsed) {
+          console.log(
+            `[shell] JSON result parsed (${Object.keys(result.parsed).length} keys, ${stdout.length} bytes)`,
+          );
+        } else {
+          console.warn("[shell] parseJsonOutput enabled but no valid JSON found in stdout");
+        }
+      } else if (stdout) {
+        console.log(`[shell] stdout: ${truncate(stdout)}`);
+      }
+
+      if (stderr) console.log(`[shell] stderr: ${truncate(stderr)}`);
       console.log(`[shell] Exit code: ${exitCode}`);
       resolve(result);
     });

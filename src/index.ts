@@ -1,3 +1,5 @@
+import { getJobOptions } from "@/config/dynamic-registry.ts";
+import { loadConfig } from "@/config/load-config.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 import { parsePayloadArg } from "./payload.ts";
 import { jobsQueue } from "./queue.ts";
@@ -19,7 +21,9 @@ async function main() {
   }
 
   const payload = parsePayloadArg(payloadArg);
-  const job = await jobsQueue.add(jobName, payload);
+  const config = await loadConfig();
+  const opts = getJobOptions(jobName, config);
+  const job = await jobsQueue.add(jobName, payload, opts);
   console.log(`Queued job ${job.id} (${job.name}).`);
   console.log("(Make sure the worker is running to process it)");
   await jobsQueue.close();

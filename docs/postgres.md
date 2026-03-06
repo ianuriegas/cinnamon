@@ -2,10 +2,22 @@
 
 ## Health checks
 
+Container status:
+
 ```bash
-docker compose ps postgres                                              # container status
-docker compose exec postgres pg_isready -U cinnamon -d cinnamon         # readiness probe (expect "accepting connections")
-docker compose logs -f postgres                                         # live logs
+docker compose ps postgres
+```
+
+Readiness probe (expect "accepting connections"):
+
+```bash
+docker compose exec postgres pg_isready -U cinnamon -d cinnamon
+```
+
+Live logs:
+
+```bash
+docker compose logs -f postgres
 ```
 
 ## SQL shell
@@ -14,11 +26,16 @@ docker compose logs -f postgres                                         # live l
 docker compose exec postgres psql -U cinnamon -d cinnamon
 ```
 
-Useful one-liners:
+List tables:
 
 ```bash
-docker compose exec postgres psql -U cinnamon -d cinnamon -c "\dt"           # list tables
-docker compose exec postgres psql -U cinnamon -d cinnamon -c "SELECT now();" # test query
+docker compose exec postgres psql -U cinnamon -d cinnamon -c "\dt"
+```
+
+Test query:
+
+```bash
+docker compose exec postgres psql -U cinnamon -d cinnamon -c "SELECT now();"
 ```
 
 ## Remote access via Tailscale

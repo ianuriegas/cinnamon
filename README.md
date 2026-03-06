@@ -22,22 +22,29 @@ flowchart LR
 
 Requires Bun and Docker Compose.
 
+1. Install dependencies, configure env, and start infrastructure:
+
 ```bash
-bun install                            # 1. install dependencies
-cp .env.example .env                   # 2. configure environment
-docker compose up -d postgres redis    # 3. start Postgres + Redis
-bun run db:migrate                     # 4. run migrations
-bun run scripts/seed-team.ts           # 5. create team + API key (save the cin_... key)
+bun install
+cp .env.example .env
+docker compose up -d postgres redis
+bun run db:migrate
 ```
 
-Then open two terminals:
+2. Create a team and API key (save the `cin_...` key that's printed):
 
 ```bash
-bun run worker                         # terminal 1: process jobs
+bun run scripts/seed-team.ts
+```
+
+3. Open two terminals — one for the worker, one for the API server:
+
+```bash
+bun run worker
 ```
 
 ```bash
-bun run server                         # terminal 2: start API server
+bun run server
 ```
 
 Trigger a job via the API:

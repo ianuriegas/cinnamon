@@ -13,10 +13,14 @@ Authorization: Bearer cin_<your_key>
 Generate a key with the seed script:
 
 ```bash
-bun run scripts/seed-team.ts                       # uses "Default Team"
-bun run scripts/seed-team.ts "Acme Corp"           # custom team name
-bun run scripts/seed-team.ts "Acme Corp" "acme-ci" # custom team + key label
+bun run scripts/seed-team.ts
+bun run scripts/seed-team.ts "Acme Corp"
+bun run scripts/seed-team.ts "Acme Corp" "acme-ci"
 ```
+
+- No arguments uses "Default Team".
+- First argument sets a custom team name.
+- Second argument sets a custom key label.
 
 ## Endpoints
 
@@ -111,20 +115,30 @@ List recent job runs for your team, sorted by `created_at` descending. Payload a
 
 **Examples:**
 
+List all runs:
+
 ```bash
-# List all runs
 curl -s http://localhost:3000/v1/jobs \
   -H "Authorization: Bearer cin_<your_key>" | jq
+```
 
-# Filter by name and status
+Filter by name and status:
+
+```bash
 curl -s "http://localhost:3000/v1/jobs?name=hello-world&status=failed" \
   -H "Authorization: Bearer cin_<your_key>" | jq
+```
 
-# Paginate
+Paginate:
+
+```bash
 curl -s "http://localhost:3000/v1/jobs?limit=5&offset=10" \
   -H "Authorization: Bearer cin_<your_key>" | jq
+```
 
-# Since a date
+Since a date:
+
+```bash
 curl -s "http://localhost:3000/v1/jobs?since=2025-03-01T00:00:00Z" \
   -H "Authorization: Bearer cin_<your_key>" | jq
 ```
@@ -249,12 +263,16 @@ The body can be omitted entirely for jobs that don't need extra data.
 
 **Examples:**
 
+Trigger with no data:
+
 ```bash
-# Trigger with no data
 curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
   -H "Authorization: Bearer cin_<your_key>" | jq
+```
 
-# Trigger with data
+Trigger with data:
+
+```bash
 curl -s -X POST http://localhost:3000/v1/jobs/shell/trigger \
   -H "Authorization: Bearer cin_<your_key>" \
   -H "Content-Type: application/json" \

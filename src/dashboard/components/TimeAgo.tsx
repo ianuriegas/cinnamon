@@ -1,9 +1,7 @@
-import type { FC } from "hono/jsx";
-
-function formatTimeAgo(date: Date | null): string {
+function formatTimeAgo(date: string | null): string {
   if (!date) return "—";
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const now = Date.now();
+  const diffMs = now - new Date(date).getTime();
 
   if (diffMs < 0) return "just now";
   if (diffMs < 60_000) return `${Math.floor(diffMs / 1000)}s ago`;
@@ -12,11 +10,11 @@ function formatTimeAgo(date: Date | null): string {
   return `${Math.floor(diffMs / 86_400_000)}d ago`;
 }
 
-export const TimeAgo: FC<{ date: Date | null }> = ({ date }) => {
-  const iso = date ? date.toISOString() : "";
+export function TimeAgo({ date }: { date: string | null }) {
+  const iso = date ?? "";
   return (
-    <time class="text-sm" datetime={iso} title={iso}>
+    <time className="text-sm" dateTime={iso} title={iso}>
       {formatTimeAgo(date)}
     </time>
   );
-};
+}

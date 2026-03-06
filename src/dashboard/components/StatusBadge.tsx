@@ -1,13 +1,12 @@
-import type { FC } from "hono/jsx";
-
 const STATUS_STYLES: Record<string, string> = {
   queued: "badge-info",
   completed: "badge-success",
   failed: "badge-error",
   processing: "badge-warning",
+  cancelled: "badge-neutral",
 };
 
-export const StatusBadge: FC<{ status: string }> = ({ status }) => {
+export function StatusBadge({ status }: { status: string }) {
   const style = STATUS_STYLES[status] ?? "badge-ghost";
-  return <span class={`badge ${style} badge-sm gap-1`}>{status}</span>;
-};
+  return <span className={`badge ${style} badge-sm gap-1`}>{status}</span>;
+}

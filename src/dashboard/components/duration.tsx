@@ -1,9 +1,7 @@
-import type { FC } from "hono/jsx";
-
-function formatDuration(startedAt: Date | null, finishedAt: Date | null): string {
+function formatDuration(startedAt: string | null, finishedAt: string | null): string {
   if (!startedAt) return "—";
-  const end = finishedAt ?? new Date();
-  const ms = end.getTime() - startedAt.getTime();
+  const end = finishedAt ? new Date(finishedAt).getTime() : Date.now();
+  const ms = end - new Date(startedAt).getTime();
 
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -12,9 +10,12 @@ function formatDuration(startedAt: Date | null, finishedAt: Date | null): string
   return `${mins}m ${secs}s`;
 }
 
-export const Duration: FC<{ startedAt: Date | null; finishedAt: Date | null }> = ({
+export function Duration({
   startedAt,
   finishedAt,
-}) => {
-  return <span class="font-mono text-sm">{formatDuration(startedAt, finishedAt)}</span>;
-};
+}: {
+  startedAt: string | null;
+  finishedAt: string | null;
+}) {
+  return <span className="font-mono text-sm">{formatDuration(startedAt, finishedAt)}</span>;
+}

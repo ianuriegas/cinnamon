@@ -10,6 +10,7 @@ import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const LOG_PREVIEW_LIMIT = 200;
+const SIGKILL_GRACE_MS = 3_000;
 
 function truncate(text: string, limit = LOG_PREVIEW_LIMIT): string {
   const trimmed = text.trimEnd();
@@ -31,6 +32,11 @@ export interface ShellJobResult {
   stderr: string;
   exitCode: number;
   parsed?: Record<string, unknown> | null;
+}
+
+export interface ShellJobOptions {
+  signal?: AbortSignal;
+  onChunk?: (stream: "stdout" | "stderr", data: string) => void;
 }
 
 function validatePayload(payload: Record<string, unknown>): Required<ShellJobPayload> {
@@ -70,8 +76,18 @@ function extractJson(stdout: string): Record<string, unknown> | null {
   return null;
 }
 
-export async function runShellJob(payload: Record<string, unknown>): Promise<ShellJobResult> {
+export async function runShellJob(
+  payload: Record<string, unknown>,
+  options?: ShellJobOptions,
+): Promise<ShellJobResult> {
   const { command, args, timeoutMs, parseJsonOutput, env, cwd } = validatePayload(payload);
+  const { signal, onChunk } = options ?? {};
+
+  if (signal?.aborted) {
+    throw Object.assign(new Error("Job cancelled before execution"), {
+      result: { stdout: "", stderr: "", exitCode: 1 } satisfies ShellJobResult,
+    });
+  }
 
   console.log(`[shell] Running: ${command} ${args.join(" ")}`);
 
@@ -85,12 +101,17 @@ export async function runShellJob(payload: Record<string, unknown>): Promise<She
     let stdout = "";
     let stderr = "";
     let killed = false;
+    let cancelled = false;
 
     proc.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      stdout += text;
+      onChunk?.("stdout", text);
     });
     proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      onChunk?.("stderr", text);
     });
 
     const timer = setTimeout(() => {
@@ -98,15 +119,37 @@ export async function runShellJob(payload: Record<string, unknown>): Promise<She
       proc.kill("SIGKILL");
     }, timeoutMs);
 
+    let graceTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function handleAbort() {
+      if (killed || cancelled) return;
+      cancelled = true;
+      proc.kill("SIGTERM");
+      graceTimer = setTimeout(() => {
+        if (!proc.killed) proc.kill("SIGKILL");
+      }, SIGKILL_GRACE_MS);
+    }
+
+    signal?.addEventListener("abort", handleAbort, { once: true });
+
     proc.on("error", (err) => {
       clearTimeout(timer);
+      clearTimeout(graceTimer);
+      signal?.removeEventListener("abort", handleAbort);
       reject(err);
     });
 
     proc.on("close", (code) => {
       clearTimeout(timer);
+      clearTimeout(graceTimer);
+      signal?.removeEventListener("abort", handleAbort);
       const exitCode = code ?? 1;
       const result: ShellJobResult = { stdout, stderr, exitCode };
+
+      if (cancelled) {
+        reject(Object.assign(new Error("Job cancelled"), { result }));
+        return;
+      }
 
       if (killed) {
         reject(Object.assign(new Error(`Process timed out after ${timeoutMs}ms`), { result }));

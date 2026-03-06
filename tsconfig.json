@@ -19,5 +19,16 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/dashboard/main.tsx",
+    "src/dashboard/App.tsx",
+    "src/dashboard/layouts",
+    "src/dashboard/pages",
+    "src/dashboard/components",
+    "src/dashboard/hooks",
+    "src/dashboard/lib",
+    "vite.config.js"
+  ]
 }

@@ -20,19 +20,28 @@ export interface CapturedLogs {
   lines: string[];
 }
 
+export interface CaptureOptions {
+  onLine?: (line: string) => void;
+}
+
 /**
  * Intercepts console.log/warn/error/info during an async function,
  * collects all output, then restores the originals.
  * Logs still go to stdout/stderr as usual.
+ * If onLine is provided, each captured line is emitted incrementally.
  */
 export async function captureConsoleLogs<T>(
   fn: () => Promise<T>,
+  options?: CaptureOptions,
 ): Promise<{ result: T; logs: string }> {
   const captured: CapturedLogs = { lines: [] };
+  const { onLine } = options ?? {};
 
   const push = (level: string, args: unknown[]) => {
     const ts = new Date().toISOString();
-    captured.lines.push(`[${ts}] [${level}] ${formatArgs(args)}`);
+    const line = `[${ts}] [${level}] ${formatArgs(args)}`;
+    captured.lines.push(line);
+    onLine?.(line);
   };
 
   console.log = (...args: unknown[]) => {

@@ -104,3 +104,4 @@ Shell jobs default to a 30-second timeout. Override with `timeoutMs` in the payl
 | --- | --- | --- |
 | `jobs/shell/scripts/hello.py` | Minimal hello world | No |
 | `jobs/shell/scripts/example-json.py` | Structured JSON result | Yes |
+| `jobs/shell/scripts/slow.py` | Long-running (30s) for testing cancel and live streaming | No |

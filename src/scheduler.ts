@@ -1,5 +1,6 @@
 import type { CinnamonConfig } from "@/config/define-config.ts";
 import { getJobOptions } from "@/config/dynamic-registry.ts";
+import { getEnv } from "@/config/env.ts";
 import { getScheduledJobs, loadConfig, type ScheduleEntry } from "@/config/load-config.ts";
 import { jobsQueue } from "./queue.ts";
 
@@ -29,9 +30,17 @@ async function reconcileStaleSchedulers(desiredIds: Set<string>) {
 async function main() {
   const config = await loadConfig();
   const schedules = getScheduledJobs(config);
+  const dryRunData = getEnv().disableCronJobs ? { dryRun: true } : {};
+  const schedulesToRegister = schedules.map((s) => ({
+    ...s,
+    data: { ...s.data, ...dryRunData },
+  }));
 
+  if (dryRunData.dryRun) {
+    console.log("[scheduler] DISABLE_CRON_JOBS=true — scheduled jobs will run in dry-run mode");
+  }
   console.log("[scheduler] Registering job schedules...");
-  await registerSchedules(schedules, config);
+  await registerSchedules(schedulesToRegister, config);
 
   const desiredIds = new Set(schedules.map((s) => s.jobName));
   const removed = await reconcileStaleSchedulers(desiredIds);

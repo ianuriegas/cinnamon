@@ -1,6 +1,6 @@
 # API Reference
 
-The API server (`src/server.ts`) listens on `PORT` (default `3000`). Start it with `bun run server`.
+The API server (`src/server.ts`) listens on `PORT` (default `3000`). Start it with `bun run server` (production) or `bun run dev` (development with Vite HMR for the dashboard).
 
 ## Authentication
 
@@ -86,7 +86,7 @@ List recent job runs for your team, sorted by `created_at` descending. Payload a
 | `limit`  | 20      | Number of results (max 100)              |
 | `offset` | 0       | Pagination offset                        |
 | `name`   | --      | Filter by job name                       |
-| `status` | --      | Filter by status (processing, completed, failed) |
+| `status` | --      | Filter by status (queued, processing, completed, failed, cancelled) |
 | `since`  | --      | ISO timestamp; only runs created after this time |
 
 **Response (200):**
@@ -147,7 +147,7 @@ curl -s "http://localhost:3000/v1/jobs?since=2025-03-01T00:00:00Z" \
 
 ### GET /v1/jobs/:id
 
-Get a single job run by its database ID. Returns full (non-truncated) payload and result. Only returns jobs belonging to your team.
+Get a single job run by its database ID (numeric) or BullMQ jobId (string). Returns full (non-truncated) payload and result. Only returns jobs belonging to your team.
 
 **Response (200):**
 
@@ -170,7 +170,7 @@ Get a single job run by its database ID. Returns full (non-truncated) payload an
 }
 ```
 
-**Errors:** 404 if the ID doesn't exist or belongs to another team. 400 if the ID is not a valid integer.
+**Errors:** 404 if the ID doesn't exist or belongs to another team.
 
 **Example:**
 
@@ -277,4 +277,50 @@ curl -s -X POST http://localhost:3000/v1/jobs/shell/trigger \
   -H "Authorization: Bearer cin_<your_key>" \
   -H "Content-Type: application/json" \
   -d '{"data": {"command": "echo", "args": ["hello from trigger"]}}' | jq
+```
+
+---
+
+## Dashboard API
+
+The dashboard API (`/api/dashboard/*`) is served alongside the React SPA. These endpoints power the web dashboard and are **not** authenticated (intended for internal/VPN use only).
+
+| Method | Path                              | Description                                   |
+| ------ | --------------------------------- | --------------------------------------------- |
+| GET    | `/api/dashboard/runs`             | List runs (paginated, filterable)             |
+| GET    | `/api/dashboard/runs/:id`         | Get a single run by jobId or numeric ID       |
+| GET    | `/api/dashboard/runs/:id/raw`     | Raw logs as `text/plain`                      |
+| GET    | `/api/dashboard/runs/:id/stream`  | SSE stream of live logs for a run             |
+| POST   | `/api/dashboard/runs/:id/cancel`  | Cancel a queued or processing run             |
+| GET    | `/api/dashboard/definitions`      | List job definitions from config              |
+| GET    | `/api/dashboard/schedules`        | List active schedules with stats              |
+| POST   | `/api/dashboard/trigger/:name`    | Trigger a job by name                         |
+
+### GET /api/dashboard/runs/:id/stream
+
+Server-Sent Events stream for real-time log output. Emits three event types:
+
+- `log` — console log lines captured from the job handler
+- `chunk` — stdout/stderr chunks from the shell subprocess (includes `stream: "stdout" | "stderr"`)
+- `done` — terminal event with final status (`completed`, `failed`, `cancelled`)
+
+If the job is already finished, all stored output is sent as events and the stream closes immediately.
+
+### POST /api/dashboard/runs/:id/cancel
+
+Cancel a running or queued job.
+
+- **Queued jobs** are removed from the BullMQ queue and marked as `cancelled` in the database.
+- **Processing jobs** receive a cancel signal via Redis pub-sub. The worker sends SIGTERM to the subprocess, waits 3 seconds, then SIGKILL. Partial output is preserved.
+
+**Response:**
+
+```json
+{ "status": "cancelled" }
+```
+
+or for processing jobs (cancel is asynchronous):
+
+```json
+{ "status": "cancelling" }
 ```

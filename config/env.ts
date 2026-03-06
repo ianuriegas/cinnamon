@@ -22,6 +22,7 @@ function loadEnv() {
     databaseUrl: getRequiredEnv("DATABASE_URL"),
     redisUrl: process.env.REDIS_URL ?? DEFAULT_REDIS_URL,
     port: Number(process.env.PORT) || DEFAULT_PORT,
+    disableCronJobs: process.env.DISABLE_CRON_JOBS === "true",
     spotifyAccessToken: process.env.SPOTIFY_ACCESS_TOKEN,
     spotifyClientId: process.env.SPOTIFY_CLIENT_ID,
     spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET,
@@ -36,4 +37,8 @@ export function getEnv() {
 
 export function getRedisConnection() {
   return parseRedisConnection(getEnv().redisUrl);
+}
+
+export function getRedisUrl(): string {
+  return getEnv().redisUrl;
 }

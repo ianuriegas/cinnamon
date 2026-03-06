@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 
 import { getJobHandlers, getJobOptions } from "@/config/dynamic-registry.ts";
@@ -6,7 +7,7 @@ import { getEnv } from "@/config/env.ts";
 import { loadConfig } from "@/config/load-config.ts";
 import { pool } from "@/db/index.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
-import { createDashboardRouter } from "@/src/dashboard/routes.tsx";
+import { createDashboardApi } from "@/src/dashboard/api.ts";
 import { authMiddleware } from "@/src/middleware/auth.ts";
 import { createJobsRouter } from "@/src/routes/jobs.ts";
 import { jobsQueue } from "./queue.ts";
@@ -51,14 +52,37 @@ v1.route("/jobs", jobsRouter);
 
 app.route("/v1", v1);
 
-const dashboardRouter = createDashboardRouter({ config, jobsQueue, jobHandlers });
-app.route("/dashboard", dashboardRouter);
+const dashboardApi = createDashboardApi({ config, jobsQueue, jobHandlers });
+app.route("/api/dashboard", dashboardApi);
+
+app.use(
+  "/dashboard/*",
+  serveStatic({ root: "./dist/client", rewriteRequestPath: (p) => p.replace(/^\/dashboard/, "") }),
+);
+app.use(
+  "/dashboard",
+  serveStatic({ root: "./dist/client", rewriteRequestPath: () => "/index.html" }),
+);
+app.get("/dashboard/*", async (c) => {
+  const { default: fs } = await import("node:fs/promises");
+  const html = await fs.readFile("./dist/client/index.html", "utf-8");
+  return c.html(html);
+});
 
 if (isDirectExecution(import.meta.url)) {
   const { port } = getEnv();
 
   serve({ fetch: app.fetch, port }, (info) => {
-    console.log(`Cinnamon API listening on http://localhost:${info.port}`);
+    console.log(`
+ ██████╗██╗███╗   ██╗███╗   ██╗ █████╗ ███╗   ███╗ ██████╗ ███╗   ██╗
+██╔════╝██║████╗  ██║████╗  ██║██╔══██╗████╗ ████║██╔═══██╗████╗  ██║
+██║     ██║██╔██╗ ██║██╔██╗ ██║███████║██╔████╔██║██║   ██║██╔██╗ ██║
+██║     ██║██║╚██╗██║██║╚██╗██║██╔══██║██║╚██╔╝██║██║   ██║██║╚██╗██║
+╚██████╗██║██║ ╚████║██║ ╚████║██║  ██║██║ ╚═╝ ██║╚██████╔╝██║ ╚████║
+ ╚═════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+`);
+    console.log(`  Listening on http://localhost:${info.port}`);
+    console.log(`  Dashboard  http://localhost:${info.port}/dashboard\n`);
   });
 
   const shutdown = async () => {

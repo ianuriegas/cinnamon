@@ -63,17 +63,16 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
 
   router.get("/:id", async (c) => {
     const idParam = c.req.param("id");
-    const id = Number(idParam);
-    if (!Number.isInteger(id) || id <= 0) {
-      return c.json({ error: "Invalid job ID" }, 400);
-    }
-
     const teamId = c.get("teamId");
-    const [row] = await db
-      .select()
-      .from(jobsLog)
-      .where(and(eq(jobsLog.id, id), eq(jobsLog.teamId, teamId)))
-      .limit(1);
+
+    const numericId = Number(idParam);
+    const isNumeric = Number.isInteger(numericId) && numericId > 0;
+
+    const condition = isNumeric
+      ? and(eq(jobsLog.id, numericId), eq(jobsLog.teamId, teamId))
+      : and(eq(jobsLog.jobId, idParam), eq(jobsLog.teamId, teamId));
+
+    const [row] = await db.select().from(jobsLog).where(condition).limit(1);
 
     if (!row) {
       return c.json({ error: "Job not found" }, 404);

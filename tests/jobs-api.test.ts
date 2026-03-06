@@ -207,9 +207,9 @@ describe("Jobs Observability API", () => {
     assert.equal(res.status, 404);
   });
 
-  test("GET /v1/jobs/:id returns 400 for invalid ID", async () => {
+  test("GET /v1/jobs/:id returns 404 for non-existent string ID", async () => {
     const res = await req("/v1/jobs/abc", { headers: authHeader() });
-    assert.equal(res.status, 400);
+    assert.equal(res.status, 404);
   });
 
   test("GET /v1/jobs/:id without auth returns 401", async () => {

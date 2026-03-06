@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "clean": "rm -rf node_modules",
+    "cli": "bun run cli/index.ts",
     "db:drop": "bun run scripts/db-drop.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run db/migrate.ts",
@@ -31,6 +32,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "bin": {
+    "cinnamon": "cli/index.ts"
+  },
   "bugs": {
     "url": "https://github.com/ianuriegas/cinnamon/issues"
   },

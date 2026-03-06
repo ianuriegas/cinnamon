@@ -47,17 +47,26 @@ bun run worker
 bun run server
 ```
 
-Trigger a job via the API:
+4. Set up the CLI (optional but recommended):
+
+```bash
+bun link
+export PATH="$HOME/.bun/bin:$PATH"
+cinnamon init   # enter your API URL and cin_... key
+```
+
+Trigger a job and check status:
+
+```bash
+cinnamon trigger hello-world
+cinnamon status hello-world
+cinnamon logs <job-id>
+```
+
+Or use curl directly:
 
 ```bash
 curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
-  -H "Authorization: Bearer cin_<your_key>" | jq
-```
-
-Check your job history:
-
-```bash
-curl -s http://localhost:3000/v1/jobs \
   -H "Authorization: Bearer cin_<your_key>" | jq
 ```
 
@@ -66,7 +75,7 @@ curl -s http://localhost:3000/v1/jobs \
 - [API reference](docs/api.md) -- all endpoints, query params, and curl examples
 - [Jobs and config](docs/jobs.md) -- shell jobs, `cinnamon.config.ts`, Spotify jobs
 - [Writing scripts](docs/writing-scripts.md) -- output contract for shell job scripts
-- [Project structure](docs/project-structure.md) -- directory layout, scripts, Docker deployment
+- [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI setup, Docker deployment
 - [Tests](docs/tests.md) -- test coverage and details
 - [Deployment](docs/deploy.md) -- CI/CD and remote deployment
 - [Postgres](docs/postgres.md) -- health checks, SQL shell, useful queries

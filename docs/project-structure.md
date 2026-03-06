@@ -23,6 +23,19 @@ jobs/
     recently-played/    Ingest recently played tracks
     top-tracks/         Snapshot top tracks by time range
   native-handlers.ts  Native TypeScript handler registry (cinnamon, shell, spotify)
+cli/
+  index.ts            CLI entrypoint (arg parsing, command dispatch)
+  config.ts           Load ~/.cinnamon/config.json + env var / flag overrides
+  client.ts           Thin HTTP client wrapping fetch() with Bearer auth
+  format.ts           Table formatting, ANSI status colors
+  commands/
+    trigger.ts        POST /v1/jobs/:name/trigger
+    status.ts         GET /v1/jobs?name=<name> (formatted table)
+    logs.ts           GET /v1/jobs/:id (stdout, stderr, exit code)
+    jobs.ts           GET /v1/jobs/definitions (table)
+    schedules.ts      GET /v1/jobs/schedules (table)
+    validate.ts       Validate cinnamon.config.ts locally (no server)
+    init.ts           Scaffold ~/.cinnamon/config.json
 scripts/              Dev tools (seed team, migration drop, DB reset)
 src/
   index.ts            Trigger CLI entrypoint
@@ -45,6 +58,8 @@ docs/                 Documentation
 
 | Command                              | Description                                        |
 | ------------------------------------ | -------------------------------------------------- |
+| `cinnamon <command>`                 | CLI for the Cinnamon API (see below)               |
+| `bun run cli`                        | Same as `cinnamon` if not globally linked          |
 | `bun run server`                     | Start the HTTP API server                          |
 | `bun run worker`                     | Process queued jobs                                |
 | `bun run scheduler`                  | Register cron schedules                            |
@@ -101,3 +116,46 @@ docker compose up -d --build
 5. Run `docker compose up -d`.
 
 For CI/CD deployment, see [Deployment](deploy.md).
+
+## Cinnamon CLI
+
+The CLI wraps the HTTP API so engineers don't need to memorize curl commands.
+
+### Setup
+
+```bash
+# Add bun's global bin to your PATH (one-time)
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# Link the global binary
+bun link
+```
+
+Alternatively, run via `bun run cli` without global linking.
+
+### Configuration
+
+The CLI reads connection info from `~/.cinnamon/config.json`:
+
+```json
+{
+  "api_url": "http://localhost:3000",
+  "api_key": "cin_..."
+}
+```
+
+Generate it interactively with `cinnamon init`, or set `CINNAMON_API_URL` and `CINNAMON_API_KEY` env vars. Flags `--api-url` and `--api-key` override everything.
+
+### Commands
+
+| Command | Description |
+| --- | --- |
+| `cinnamon trigger <name> [--data '{...}']` | Trigger a job by name |
+| `cinnamon status <name> [--limit N]` | Show recent runs for a job |
+| `cinnamon logs <id>` | Show full output for a run |
+| `cinnamon jobs` | List registered job definitions |
+| `cinnamon schedules` | List active cron schedules |
+| `cinnamon validate [path]` | Validate `cinnamon.config.ts` locally (no server needed) |
+| `cinnamon init` | Set up `~/.cinnamon/config.json` |
+| `cinnamon help` | Show usage |

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db/index.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
+import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
 import { app } from "@/src/server.ts";
 
@@ -22,6 +23,7 @@ function authHeader(key = testPlainKey) {
 
 describe("API server", () => {
   after(async () => {
+    await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
     await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
     await db.delete(teams).where(eq(teams.id, testTeamId));
   });

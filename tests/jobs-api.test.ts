@@ -15,7 +15,7 @@ const OTHER_TEAM_NAME = `__test_jobs_api_other_${Date.now()}`;
 let testTeamId: number;
 let otherTeamId: number;
 let testPlainKey: string;
-let seededJobIds: number[] = [];
+let seededJobIds: number[];
 
 function req(path: string, init?: RequestInit) {
   return app.request(path, init);
@@ -27,11 +27,8 @@ function authHeader(key = testPlainKey) {
 
 describe("Jobs Observability API", () => {
   after(async () => {
-    if (seededJobIds.length > 0) {
-      for (const id of seededJobIds) {
-        await db.delete(jobsLog).where(eq(jobsLog.id, id));
-      }
-    }
+    await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
+    await db.delete(jobsLog).where(eq(jobsLog.teamId, otherTeamId));
     await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
     await db.delete(apiKeys).where(eq(apiKeys.teamId, otherTeamId));
     await db.delete(teams).where(eq(teams.id, testTeamId));

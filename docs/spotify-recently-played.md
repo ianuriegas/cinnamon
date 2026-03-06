@@ -12,9 +12,16 @@ Incrementally ingest listening history from Spotify's "Get Recently Played Track
 
 ## Usage
 
+Write mode:
+
 ```bash
-bun run trigger spotify-recently-played                      # write mode
-bun run trigger spotify-recently-played '{"dryRun":true}'    # dry-run (fetch only)
+bun run trigger spotify-recently-played
+```
+
+Dry-run (fetch only, no database writes):
+
+```bash
+bun run trigger spotify-recently-played '{"dryRun":true}'
 ```
 
 Optional payload fields:

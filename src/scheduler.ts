@@ -3,24 +3,6 @@ import { getJobOptions } from "@/config/dynamic-registry.ts";
 import { getScheduledJobs, loadConfig, type ScheduleEntry } from "@/config/load-config.ts";
 import { jobsQueue } from "./queue.ts";
 
-/**
- * Native handler schedules — for jobs registered as native TypeScript handlers
- * rather than config-driven shell jobs. These will be removed once the
- * corresponding jobs are migrated to cinnamon.config.ts.
- */
-const nativeSchedules: ScheduleEntry[] = [
-  {
-    jobName: "spotify-recently-played",
-    pattern: "0 * * * *",
-    data: {},
-  },
-  {
-    jobName: "spotify-top-tracks",
-    pattern: "0 0 * * *",
-    data: {},
-  },
-];
-
 async function registerSchedules(schedules: ScheduleEntry[], config: CinnamonConfig) {
   for (const { jobName, pattern, data } of schedules) {
     const opts = getJobOptions(jobName, config);
@@ -46,17 +28,16 @@ async function reconcileStaleSchedulers(desiredIds: Set<string>) {
 
 async function main() {
   const config = await loadConfig();
-  const configSchedules = getScheduledJobs(config);
-  const allSchedules = [...nativeSchedules, ...configSchedules];
+  const schedules = getScheduledJobs(config);
 
   console.log("[scheduler] Registering job schedules...");
-  await registerSchedules(allSchedules, config);
+  await registerSchedules(schedules, config);
 
-  const desiredIds = new Set(allSchedules.map((s) => s.jobName));
+  const desiredIds = new Set(schedules.map((s) => s.jobName));
   const removed = await reconcileStaleSchedulers(desiredIds);
 
   console.log(
-    `[scheduler] Done. ${allSchedules.length} schedule(s) active${removed > 0 ? `, ${removed} stale removed` : ""}.`,
+    `[scheduler] Done. ${schedules.length} schedule(s) active${removed > 0 ? `, ${removed} stale removed` : ""}.`,
   );
 }
 

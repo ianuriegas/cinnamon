@@ -1,7 +1,7 @@
 # Project Structure
 
 ```
-cinnamon.config.ts  Job definitions (config-driven shell jobs)
+cinnamon.config.ts  Job definitions (all jobs: shell, spotify, demo)
 config/
   define-config.ts    JobDefinition and CinnamonConfig types
   dynamic-registry.ts Builds the handler registry from native + config jobs
@@ -13,16 +13,16 @@ db/
   migrations/         Generated SQL migrations
 jobs/
   _shared/            Shared utilities (isDirectExecution)
-  cinnamon/           Countdown demo job
+  cinnamon/           Countdown demo job (config-driven)
   shell/              Shell/process executor (run any command/script)
     scripts/          Example scripts (hello.py, example-json.py)
-  spotify/            Spotify job group
+  spotify/            Spotify job group (config-driven)
     auth.ts             Shared auth (token refresh, profile lookup)
     api.ts              Shared API client (fetchRecentlyPlayed, fetchTopTracks)
     types.ts            Shared Spotify types
     recently-played/    Ingest recently played tracks
     top-tracks/         Snapshot top tracks by time range
-  native-handlers.ts  Native TypeScript handler registry (cinnamon, shell, spotify)
+  native-handlers.ts  Shell executor registration (framework internal)
 cli/
   index.ts            CLI entrypoint (arg parsing, command dispatch)
   config.ts           Load ~/.cinnamon/config.json + env var / flag overrides
@@ -83,7 +83,7 @@ docs/                 Documentation
 
 ## Docker deployment
 
-Run the full stack (Postgres, Redis, worker, scheduler) with a single command:
+Run the full stack (Postgres, Redis, API server, worker, scheduler) with a single command:
 
 ```bash
 cp .env.example .env   # then fill in credentials
@@ -94,12 +94,12 @@ This will:
 
 1. Start Postgres and Redis
 2. Run database migrations (one-shot `migrate` container)
-3. Start the worker and scheduler
+3. Start the API server (HTTP + dashboard on port 3000), worker, and scheduler
 
 Monitor logs:
 
 ```bash
-docker compose logs -f worker scheduler
+docker compose logs -f api worker scheduler
 ```
 
 Rebuild after code changes:

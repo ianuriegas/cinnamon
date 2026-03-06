@@ -4,14 +4,14 @@ import type { CinnamonConfig } from "@/config/define-config.ts";
 import { buildRegistry } from "@/config/dynamic-registry.ts";
 
 describe("buildRegistry", () => {
-  test("includes native handlers when config has no jobs", () => {
+  test("includes shell native handler when config has no jobs", () => {
     const config: CinnamonConfig = { jobs: {} };
     const registry = buildRegistry(config);
 
-    assert.ok("cinnamon" in registry, "should have cinnamon native handler");
     assert.ok("shell" in registry, "should have shell native handler");
-    assert.ok("spotify-recently-played" in registry, "should have spotify-recently-played");
-    assert.ok("spotify-top-tracks" in registry, "should have spotify-top-tracks");
+    assert.ok(!("cinnamon" in registry), "cinnamon is now config-driven");
+    assert.ok(!("spotify-recently-played" in registry), "spotify jobs are now config-driven");
+    assert.ok(!("spotify-top-tracks" in registry), "spotify jobs are now config-driven");
   });
 
   test("adds config-driven jobs alongside native handlers", () => {
@@ -27,8 +27,7 @@ describe("buildRegistry", () => {
     const registry = buildRegistry(config);
 
     assert.ok("my-script" in registry, "should have config-driven job");
-    assert.ok("cinnamon" in registry, "native handlers preserved");
-    assert.ok("shell" in registry, "native handlers preserved");
+    assert.ok("shell" in registry, "native handler preserved");
   });
 
   test("config-driven handler calls shell with correct payload", async () => {
@@ -79,15 +78,25 @@ describe("buildRegistry", () => {
     assert.throws(() => buildRegistry(config), /collides with a native handler/);
   });
 
-  test("throws on collision with cinnamon native handler", () => {
+  test("allows config-driven jobs with previously native names", () => {
     const config: CinnamonConfig = {
       jobs: {
         cinnamon: {
           command: "echo",
+          args: ["hello"],
+          timeout: "5s",
+        },
+        "spotify-recently-played": {
+          command: "echo",
+          args: ["test"],
+          timeout: "5s",
         },
       },
     };
+    const registry = buildRegistry(config);
 
-    assert.throws(() => buildRegistry(config), /collides with a native handler/);
+    assert.ok("cinnamon" in registry, "cinnamon registered as config job");
+    assert.ok("spotify-recently-played" in registry, "spotify registered as config job");
+    assert.ok("shell" in registry, "shell native handler still present");
   });
 });

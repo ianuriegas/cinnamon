@@ -10,6 +10,7 @@ export const jobsLog = pgTable("jobs_log", {
   status: text("status").notNull(),
   payload: jsonb("payload"),
   result: jsonb("result"),
+  logs: text("logs"),
   error: boolean("error").notNull().default(false),
   startedAt: timestamp("started_at"),
   finishedAt: timestamp("finished_at"),

@@ -1,4 +1,5 @@
 FROM oven/bun:1-alpine AS base
+RUN apk add --no-cache python3
 WORKDIR /app
 
 FROM base AS install

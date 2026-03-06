@@ -43,6 +43,7 @@ export default defineConfig({
 | `description`    | string                | No       | Human-readable description                        |
 | `parseJsonOutput`| boolean               | No       | Parse last JSON line from stdout                  |
 | `schedule`       | string                | No       | Cron expression (5 fields) for scheduled runs     |
+| `notifications`  | NotificationConfig    | No       | Webhook notifications on success/failure          |
 
 ### Environment variable interpolation
 
@@ -57,6 +58,39 @@ Use `${VAR}` in `env` values to reference host environment variables:
 ```
 
 Unresolved variables become empty strings.
+
+### Notifications
+
+Jobs can send webhook notifications on success or failure. Each event supports multiple targets. Platform is auto-detected from the URL.
+
+```ts
+"data-cleanup": {
+  command: "python3",
+  script: "./scripts/cleanup.py",
+  schedule: "0 2 * * *",
+  notifications: {
+    on_failure: [
+      { url: "${DISCORD_WEBHOOK_URL}" },
+      { url: "${SLACK_WEBHOOK_URL}" },
+    ],
+    on_success: [
+      { url: "${DISCORD_WEBHOOK_URL}" },
+    ],
+  },
+}
+```
+
+URLs support `${VAR}` interpolation from the host environment, so webhook secrets stay in `.env` (not in config).
+
+**Supported platforms:**
+
+| URL pattern                        | Format                    |
+| ---------------------------------- | ------------------------- |
+| `discord.com/api/webhooks/...`     | Discord rich embed        |
+| `hooks.slack.com/...`              | Slack Block Kit message   |
+| Anything else                      | Generic JSON POST         |
+
+Notifications fire after the worker marks a job as completed or failed. Delivery retries up to 2 times with backoff. Webhook failures are logged but never block job execution.
 
 ## Shell jobs
 

@@ -1,12 +1,17 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 
+import { getJobHandlers, getJobOptions } from "@/config/dynamic-registry.ts";
 import { getEnv } from "@/config/env.ts";
+import { loadConfig } from "@/config/load-config.ts";
 import { pool } from "@/db/index.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
-import { jobHandlers } from "@/jobs/registry.ts";
 import { authMiddleware } from "@/src/middleware/auth.ts";
+import { createJobsRouter } from "@/src/routes/jobs.ts";
 import { jobsQueue } from "./queue.ts";
+
+const jobHandlers = await getJobHandlers();
+const config = await loadConfig();
 
 type AppEnv = {
   Variables: {
@@ -34,10 +39,14 @@ v1.post("/enqueue", async (c) => {
 
   const teamId = c.get("teamId");
   const jobData = { ...body.data, teamId };
-  const job = await jobsQueue.add(body.jobName, jobData);
+  const opts = getJobOptions(body.jobName, config);
+  const job = await jobsQueue.add(body.jobName, jobData, opts);
 
   return c.json({ jobId: job.id, jobName: job.name });
 });
+
+const jobsRouter = createJobsRouter({ jobsQueue, jobHandlers, config });
+v1.route("/jobs", jobsRouter);
 
 app.route("/v1", v1);
 

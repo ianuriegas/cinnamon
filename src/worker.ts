@@ -1,12 +1,14 @@
 import { type Job, Worker } from "bullmq";
 import { eq } from "drizzle-orm";
 
+import { getJobHandlers } from "@/config/dynamic-registry.ts";
 import { getRedisConnection } from "@/config/env.ts";
 import { db, pool } from "@/db/index.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
-import { jobHandlers } from "@/jobs/registry.ts";
 import { JOB_STATUS, type JobData } from "./job-types.ts";
 import { jobsQueueName } from "./queue.ts";
+
+const jobHandlers = await getJobHandlers();
 
 async function upsertProcessingLog(job: Job<JobData>, jobId: string) {
   try {

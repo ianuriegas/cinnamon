@@ -6,7 +6,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/index.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { teams } from "@/db/schema/teams.ts";
-import { jobsQueue } from "@/src/queue.ts";
 import { app } from "@/src/server.ts";
 
 const TEST_TEAM_NAME = `__test_api_${Date.now()}`;
@@ -25,7 +24,6 @@ describe("API server", () => {
   after(async () => {
     await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
     await db.delete(teams).where(eq(teams.id, testTeamId));
-    await jobsQueue.close();
   });
 
   test("setup: seed test team and API key", async () => {

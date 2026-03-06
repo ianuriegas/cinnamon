@@ -68,7 +68,7 @@ FROM spotify_top_tracks ORDER BY snapshot_date DESC, rank LIMIT 20;
 
 ### Via HTTP API
 
-The preferred way to trigger jobs remotely. Requires a valid API key (see `bun run scripts/seed-default-team.ts`):
+The preferred way to trigger jobs remotely. Requires a valid API key (see `bun run scripts/seed-team.ts`):
 
 ```bash
 curl -X POST http://<tailscale-ip>:3000/v1/enqueue \

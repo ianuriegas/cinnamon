@@ -92,7 +92,7 @@ const JsonBlock: FC<{ title: string; value: unknown }> = ({ title, value }) => (
 
 export const RunDetailContent: FC<{ run: RunDetailRow }> = ({ run }) => {
   const shell = isShellResult(run.result) ? run.result : null;
-  const isProcessing = run.status === "processing";
+  const isProcessing = run.status === "processing" || run.status === "queued";
 
   return (
     <div

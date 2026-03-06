@@ -100,6 +100,19 @@ The deploy workflow triggers on push to `main` and manual `workflow_dispatch`. C
 - Check that the MacBook is online and connected to Tailscale: `tailscale status`.
 - Test SSH manually: `ssh <mac-user>@<tailscale-ip>`.
 
+### Migration fails with "password authentication failed"
+
+Postgres only sets credentials when the data volume is first created. If you change `POSTGRES_PASSWORD` in `.env` after the volume already exists, Postgres keeps the old password and migrations will fail with `28P01`.
+
+Fix by destroying and re-creating the volumes:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+> **Warning:** `-v` deletes all data in Postgres and Redis. This is fine for local dev but should never be used in production without a backup.
+
 ### Docker build fails
 
 SSH into the MacBook and check logs:

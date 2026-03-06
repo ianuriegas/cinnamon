@@ -36,28 +36,43 @@ export default defineConfig({
     "interp-demo": {
       command: "printenv",
       args: ["DB_HOST"],
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
       env: { DB_HOST: "${DATABASE_URL}" },
       timeout: "5s",
       description: "Test env var interpolation from host",
     },
 
-    // Spotify jobs are registered as native handlers (jobs/native-handlers.ts)
-    // and will be migrated to config entries in a future phase.
-    //
-    // "spotify-recently-played": {
-    //   command: "bun",
-    //   script: "./jobs/spotify/recently-played/index.ts",
-    //   schedule: "0 * * * *",
-    //   timeout: "30s",
-    //   description: "Ingest Spotify recently played tracks",
-    // },
-    //
-    // "spotify-top-tracks": {
-    //   command: "bun",
-    //   script: "./jobs/spotify/top-tracks/index.ts",
-    //   schedule: "0 0 * * *",
-    //   timeout: "30s",
-    //   description: "Snapshot top tracks by time range",
-    // },
+    cinnamon: {
+      command: "bun",
+      script: "./jobs/cinnamon/index.ts",
+      timeout: "30s",
+      description: "Cinnamon countdown demo job",
+    },
+
+    "spotify-recently-played": {
+      command: "bun",
+      script: "./jobs/spotify/recently-played/index.ts",
+      schedule: "0 * * * *",
+      timeout: "30s",
+      parseJsonOutput: true,
+      description: "Ingest Spotify recently played tracks",
+      notifications: {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
+        on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],
+      },
+    },
+
+    "spotify-top-tracks": {
+      command: "bun",
+      script: "./jobs/spotify/top-tracks/index.ts",
+      schedule: "0 0 * * *",
+      timeout: "60s",
+      parseJsonOutput: true,
+      description: "Snapshot top tracks by time range",
+      notifications: {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
+        on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],
+      },
+    },
   },
 });

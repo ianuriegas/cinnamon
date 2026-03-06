@@ -31,11 +31,12 @@ Uses Bun's built-in test runner. Run with `bun test`.
 
 ### Dynamic registry tests (`tests/dynamic-registry.test.ts`)
 
-- Includes native handlers when config has no jobs
-- Adds config-driven jobs alongside native handlers
+- Includes shell native handler when config has no jobs
+- Adds config-driven jobs alongside shell handler
 - Config-driven handler calls shell with correct payload
 - Config-driven handler prepends script to args
-- Throws on name collision with native handler
+- Throws on name collision with shell native handler
+- Allows config-driven jobs with previously native names (cinnamon, spotify)
 
 ### Scheduler tests (`tests/scheduler.test.ts`)
 

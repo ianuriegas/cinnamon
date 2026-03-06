@@ -6,6 +6,7 @@ import { getEnv } from "@/config/env.ts";
 import { loadConfig } from "@/config/load-config.ts";
 import { pool } from "@/db/index.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
+import { createDashboardRouter } from "@/src/dashboard/routes.tsx";
 import { authMiddleware } from "@/src/middleware/auth.ts";
 import { createJobsRouter } from "@/src/routes/jobs.ts";
 import { jobsQueue } from "./queue.ts";
@@ -49,6 +50,9 @@ const jobsRouter = createJobsRouter({ jobsQueue, jobHandlers, config });
 v1.route("/jobs", jobsRouter);
 
 app.route("/v1", v1);
+
+const dashboardRouter = createDashboardRouter({ config, jobsQueue, jobHandlers });
+app.route("/dashboard", dashboardRouter);
 
 if (isDirectExecution(import.meta.url)) {
   const { port } = getEnv();

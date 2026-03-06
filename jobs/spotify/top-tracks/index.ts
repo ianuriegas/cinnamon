@@ -35,7 +35,7 @@ if (isDirectExecution(import.meta.url)) {
   const payload = parseDirectExecutionPayload(process.argv.slice(2));
   runSpotifyTopTracksJob(payload)
     .then((result) => {
-      console.log("Spotify top tracks job completed:", result);
+      console.log(JSON.stringify(result));
     })
     .catch((error) => {
       console.error("Spotify top tracks job failed:", error);

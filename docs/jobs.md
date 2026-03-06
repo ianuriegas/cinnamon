@@ -1,6 +1,6 @@
 # Jobs and Configuration
 
-Cinnamon supports two kinds of jobs: **config-driven shell jobs** defined in `cinnamon.config.ts`, and **native TypeScript handlers** registered in `jobs/native-handlers.ts`.
+All jobs are defined in `cinnamon.config.ts` using `defineConfig`. Each job runs as a subprocess via the shell executor, which captures stdout, stderr, and exit code.
 
 ## Config-driven jobs
 
@@ -126,22 +126,22 @@ See [Writing scripts](writing-scripts.md) for the full output contract and examp
 
 ## Spotify jobs
 
-Spotify jobs are registered as native TypeScript handlers in `jobs/native-handlers.ts` and will be migrated to config entries in a future phase.
+Spotify jobs are config-driven like all other jobs. They run as `bun` subprocesses that connect to Postgres and the Spotify API, returning structured results via `parseJsonOutput`.
 
-| Job                        | Schedule        | Handler                                   |
+| Job                        | Schedule        | Script                                    |
 | -------------------------- | --------------- | ----------------------------------------- |
-| `spotify-recently-played`  | Every hour      | `jobs/spotify/recently-played/ingest.ts`  |
+| `spotify-recently-played`  | Every hour      | `jobs/spotify/recently-played/index.ts`   |
 | `spotify-top-tracks`       | Daily (00:00)   | `jobs/spotify/top-tracks/index.ts`        |
 
 ```bash
 bun run trigger spotify-recently-played '{"dryRun":true}'
 ```
 
-The scheduler (`bun run scheduler`) registers these as BullMQ repeatable jobs. See [Spotify OAuth](spotify-auth.md) for auth setup and [Spotify ingestion](spotify-recently-played.md) for detailed job docs.
+See [Spotify OAuth](spotify-auth.md) for auth setup and [Spotify ingestion](spotify-recently-played.md) for detailed job docs.
 
 ## Scheduling
 
-Jobs with a `schedule` field in `cinnamon.config.ts` are automatically registered as BullMQ repeatable jobs when the scheduler runs. Native handler schedules are defined in `src/scheduler.ts`.
+Jobs with a `schedule` field in `cinnamon.config.ts` are automatically registered as BullMQ repeatable jobs when the scheduler runs.
 
 ```bash
 bun run scheduler

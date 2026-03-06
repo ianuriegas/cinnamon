@@ -1,4 +1,5 @@
 export const JOB_STATUS = {
+  queued: "queued",
   processing: "processing",
   completed: "completed",
   failed: "failed",

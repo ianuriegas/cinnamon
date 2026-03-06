@@ -27,12 +27,16 @@ function authHeader(key = testPlainKey) {
 
 describe("Jobs Observability API", () => {
   after(async () => {
-    await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
-    await db.delete(jobsLog).where(eq(jobsLog.teamId, otherTeamId));
-    await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
-    await db.delete(apiKeys).where(eq(apiKeys.teamId, otherTeamId));
-    await db.delete(teams).where(eq(teams.id, testTeamId));
-    await db.delete(teams).where(eq(teams.id, otherTeamId));
+    if (testTeamId != null) {
+      await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
+      await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
+      await db.delete(teams).where(eq(teams.id, testTeamId));
+    }
+    if (otherTeamId != null && otherTeamId !== testTeamId) {
+      await db.delete(jobsLog).where(eq(jobsLog.teamId, otherTeamId));
+      await db.delete(apiKeys).where(eq(apiKeys.teamId, otherTeamId));
+      await db.delete(teams).where(eq(teams.id, otherTeamId));
+    }
     await jobsQueue.close();
   });
 

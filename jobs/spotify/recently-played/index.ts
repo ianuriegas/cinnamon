@@ -35,7 +35,7 @@ if (isDirectExecution(import.meta.url)) {
   const payload = parseDirectExecutionPayload(process.argv.slice(2));
   runSpotifyRecentlyPlayedJob(payload)
     .then((result) => {
-      console.log("Spotify recently played job completed:", result);
+      console.log(JSON.stringify(result));
     })
     .catch((error) => {
       console.error("Spotify recently played job failed:", error);

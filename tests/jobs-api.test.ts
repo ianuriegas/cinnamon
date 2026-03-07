@@ -37,6 +37,7 @@ describe("Jobs Observability API", () => {
       await db.delete(apiKeys).where(eq(apiKeys.teamId, otherTeamId));
       await db.delete(teams).where(eq(teams.id, otherTeamId));
     }
+    await jobsQueue.obliterate({ force: true }).catch(() => {});
     await jobsQueue.close();
   });
 

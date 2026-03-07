@@ -83,6 +83,7 @@ services:
     env_file: .env
     environment:
       <<: *app-env
+      NODE_ENV: production
     ports:
       - "3000:3000"
     command: ["bun", "run", "server"]

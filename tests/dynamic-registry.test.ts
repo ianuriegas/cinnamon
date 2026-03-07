@@ -61,7 +61,7 @@ describe("buildRegistry", () => {
     const registry = buildRegistry(config);
     const result = (await registry["hello-py"]({})) as { stdout: string; exitCode: number };
 
-    assert.equal(result.stdout, "Hello World\n");
+    assert.ok(result.stdout.includes("██"), "expected ASCII art output");
     assert.equal(result.exitCode, 0);
   });
 

@@ -9,6 +9,20 @@ When the user asks to commit, create a branch, or open a PR, follow this workflo
 
 ## Pre-flight checks
 
+### 1. Cleanup sweep
+
+Before running checks, scan the codebase for stale references introduced by the current changes:
+
+- **Docs**: Verify `docs/*.md`, `README.md`, and `docs/project-structure.md` don't reference deleted/renamed files, missing new files, or outdated descriptions.
+- **Imports**: Confirm no imports point to deleted or renamed modules.
+- **Dead exports**: Remove unused exports introduced or orphaned by the changes.
+- **Config consistency**: Ensure `.env.example`, `.dockerignore`, `.gitignore`, `biome.json`, and `tsconfig*.json` reflect any new files, directories, or tooling changes.
+- **UI completeness**: Check that status filters, enums, and option lists include any newly added values (e.g. new job statuses).
+
+Fix anything found before proceeding.
+
+### 2. Automated checks
+
 Run all three and abort if any fail:
 
 ```bash
@@ -62,11 +76,12 @@ bun run lint             # exits 0, no issues
 
 ## Workflow steps
 
-1. Run pre-flight checks (abort on failure)
-2. Run `git status` and `git diff --stat` to review all changes
-3. Create and switch to a feature branch
-4. Stage relevant files (`git add`)
-5. Commit with the format above
-6. Push with `git push -u origin HEAD` (use `required_permissions: ["all"]`)
-7. Open PR with `gh pr create` using the PR body format above (use `required_permissions: ["all"]`)
-8. Return the PR URL to the user
+1. Run the cleanup sweep and fix any stale references
+2. Run automated checks (abort on failure)
+3. Run `git status` and `git diff --stat` to review all changes
+4. Create and switch to a feature branch
+5. Stage relevant files (`git add`)
+6. Commit with the format above
+7. Push with `git push -u origin HEAD` (use `required_permissions: ["all"]`)
+8. Open PR with `gh pr create` using the PR body format above (use `required_permissions: ["all"]`)
+9. Return the PR URL to the user

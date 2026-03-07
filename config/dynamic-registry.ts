@@ -1,7 +1,7 @@
 import type { JobsOptions } from "bullmq";
 
 import { nativeHandlers } from "@/jobs/native-handlers.ts";
-import { runShellJob } from "@/jobs/shell/index.ts";
+import { runShellJob, type ShellJobOptions } from "@/jobs/shell/index.ts";
 import type { JobHandler } from "@/src/job-types.ts";
 import type { CinnamonConfig, JobDefinition } from "./define-config.ts";
 import { loadConfig, parseDuration } from "./load-config.ts";
@@ -28,17 +28,18 @@ function createConfigHandler(_name: string, def: JobDefinition): JobHandler {
   const timeoutMs = def.timeout ? parseDuration(def.timeout) : DEFAULT_TIMEOUT_MS;
   const baseArgs = [...(def.script ? [def.script] : []), ...(def.args ?? [])];
 
-  return async (payload) => {
+  return async (payload, options?: ShellJobOptions) => {
+    const dryRunArgs = payload.dryRun === true ? ["--dry-run"] : [];
     const merged = {
       ...payload,
       command: def.command,
-      args: [...baseArgs, ...((payload.args as string[]) ?? [])],
+      args: [...baseArgs, ...((payload.args as string[]) ?? []), ...dryRunArgs],
       timeoutMs,
       parseJsonOutput: def.parseJsonOutput ?? false,
       env: def.env ? interpolateEnv(def.env) : undefined,
       cwd: def.cwd,
     };
-    return runShellJob(merged);
+    return runShellJob(merged, options);
   };
 }
 

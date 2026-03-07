@@ -16,13 +16,16 @@
     "job:dry": "bun run scripts/run-jobs.ts --dry",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test": "bun test",
+    "test": "NODE_ENV=test bun test",
     "trigger": "bun run src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.dashboard.json --noEmit",
     "auth:spotify": "bun run scripts/spotify-auth.ts",
     "scheduler": "bun run src/scheduler.ts",
-    "server": "bun run src/server.ts",
-    "worker": "bun run src/worker.ts"
+    "server": "bun run --watch src/server.ts",
+    "worker": "bun run --watch src/worker.ts",
+    "dev:dashboard": "vite",
+    "build:dashboard": "vite build",
+    "dev": "bun run --watch src/server.ts & vite"
   },
   "repository": {
     "type": "git",
@@ -45,14 +48,24 @@
     "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.12.5",
-    "pg": "^8.18.0"
+    "pg": "^8.18.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router": "^7.13.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@clack/prompts": "^1.1.0",
+    "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^25.2.2",
     "@types/pg": "^8.16.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "daisyui": "^5.5.19",
     "drizzle-kit": "^0.31.4",
-    "typescript": "^5.9.3"
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

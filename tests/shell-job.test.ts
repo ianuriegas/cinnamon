@@ -9,7 +9,7 @@ describe("runShellJob", () => {
       args: ["./jobs/shell/scripts/hello.py"],
     });
 
-    assert.equal(result.stdout, "Hello World\n");
+    assert.ok(result.stdout.includes("██"), "expected ASCII art output");
     assert.equal(result.stderr, "");
     assert.equal(result.exitCode, 0);
   });

@@ -197,4 +197,26 @@ describe("config handler threads env and cwd", () => {
     assert.equal(result.stdout.trim(), "unchanged");
     assert.equal(result.exitCode, 0);
   });
+
+  test("payload with dryRun appends --dry-run to args", async () => {
+    const config: CinnamonConfig = {
+      jobs: {
+        "dry-test": {
+          command: "echo",
+          args: ["base"],
+        },
+      },
+    };
+    const registry = buildRegistry(config);
+    const result = (await registry["dry-test"]({ dryRun: true })) as {
+      stdout: string;
+      exitCode: number;
+    };
+
+    assert.ok(
+      result.stdout.includes("--dry-run"),
+      `expected --dry-run in output, got: ${result.stdout}`,
+    );
+    assert.equal(result.exitCode, 0);
+  });
 });

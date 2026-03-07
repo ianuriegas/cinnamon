@@ -4,11 +4,11 @@ Automated deployment via GitHub Actions. Pushes to `main` that pass CI checks ar
 
 ## How it works
 
-1. Push to `main` triggers the **Checks** workflow (lint, typecheck, test).
+1. Push to `main` triggers the **Checks** workflow (lint, typecheck, dashboard build, test).
 2. On success, the **Deploy** workflow starts automatically.
 3. The GitHub Actions runner joins the Tailscale network with an ephemeral auth key.
 4. Over SSH, it connects to the target MacBook, pulls the latest code, and runs `docker compose up -d --build`.
-5. Docker Compose starts Postgres, Redis, migrations, the API server (with dashboard on port 3000), worker, and scheduler.
+5. Docker Compose builds the dashboard, starts Postgres, Redis, runs migrations, and launches the API server (with dashboard at port 3000), worker, and scheduler.
 6. The `.env` file lives on the target MacBook and is not touched by the workflow.
 
 ## How credentials work
@@ -84,6 +84,19 @@ Trigger a deploy without pushing code:
 gh workflow run deploy
 ```
 
+## Code vs state: what rebuilds don't touch
+
+Docker rebuilds replace **code** (images) but not **state** (data in Redis and Postgres volumes). This distinction matters:
+
+| What changed | What to do |
+| --- | --- |
+| Source code, dependencies, dashboard | `docker compose up -d --build` (normal deploy) |
+| Cron schedules added/removed | Rebuild + the scheduler auto-reconciles on startup |
+| Need to wipe stale schedules from Redis | `docker compose restart scheduler` |
+| Need to wipe all data (nuclear) | `docker compose down -v && docker compose up -d --build` |
+
+The deploy workflow uses `--force-recreate` to ensure all containers (including the one-shot scheduler) restart with fresh code after every deploy. This guarantees schedule reconciliation runs on every deploy.
+
 ## Troubleshooting
 
 ### Deploy workflow didn't trigger
@@ -112,6 +125,14 @@ docker compose up -d
 ```
 
 > **Warning:** `-v` deletes all data in Postgres and Redis. This is fine for local dev but should never be used in production without a backup.
+
+### Docker build uses stale code
+
+The Dockerfile builds the dashboard in a separate stage and copies it into the final image **after** `COPY . .` so the built assets always win. The `.dockerignore` also excludes `dist/` to prevent a stale local build from being sent into the build context. If you still see old code, force a clean rebuild:
+
+```bash
+docker compose up -d --build --no-cache
+```
 
 ### Docker build fails
 

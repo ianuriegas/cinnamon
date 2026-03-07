@@ -16,30 +16,11 @@ export default defineConfig({
       },
     },
 
-    // Demo jobs for execution policies
-    "env-demo": {
-      command: "printenv",
-      args: ["GREETING"],
-      env: { GREETING: "hello from cinnamon" },
-      cwd: "/tmp",
-      timeout: "10s",
-      retries: 2,
-      description: "Demo of Phase 6 execution policies",
-    },
-    "fail-demo": {
-      command: "bash",
-      args: ["-c", "echo 'attempt!' && exit 1"],
-      retries: 3,
-      timeout: "5s",
-      description: "Intentionally fails to test retries",
-    },
-    "interp-demo": {
-      command: "printenv",
-      args: ["DB_HOST"],
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
-      env: { DB_HOST: "${DATABASE_URL}" },
-      timeout: "5s",
-      description: "Test env var interpolation from host",
+    "slow-job": {
+      command: "python3",
+      script: "./jobs/shell/scripts/slow.py",
+      timeout: "60s",
+      description: "Long-running job for testing cancel and live streaming",
     },
 
     cinnamon: {

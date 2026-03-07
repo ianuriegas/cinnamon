@@ -6,6 +6,8 @@ config/
   define-config.ts    JobDefinition and CinnamonConfig types
   dynamic-registry.ts Builds the handler registry from native + config jobs
   env.ts              Environment and Redis connection config
+  redis.ts            Redis URL parsing (parseRedisConnection)
+  redis-pubsub.ts     Redis pub-sub helpers for log streaming and cancel signals
   load-config.ts      Config loader with validation
 db/
   connection.ts       Shared Postgres pool
@@ -15,7 +17,7 @@ jobs/
   _shared/            Shared utilities (isDirectExecution)
   cinnamon/           Countdown demo job (config-driven)
   shell/              Shell/process executor (run any command/script)
-    scripts/          Example scripts (hello.py, example-json.py)
+    scripts/          Example scripts (hello.py, example-json.py, slow.py)
   spotify/            Spotify job group (config-driven)
     auth.ts             Shared auth (token refresh, profile lookup)
     api.ts              Shared API client (fetchRecentlyPlayed, fetchTopTracks)
@@ -51,6 +53,22 @@ src/
     auth.ts           Bearer token auth middleware for Hono
   routes/
     jobs.ts           Jobs observability API routes
+  dashboard/          React SPA (Vite + Tailwind + DaisyUI)
+    index.html        Vite HTML entry point
+    main.tsx          React entry (mounts <App /> into #root)
+    App.tsx           React Router routes
+    styles.css        Tailwind v4 + DaisyUI v5 + Gruvbox themes
+    api.ts            Server-side Hono JSON API (mounted at /api/dashboard, includes cancel + SSE stream)
+    layouts/
+      BaseLayout.tsx  Shell layout (navbar, theme toggle, <Outlet />)
+    pages/            Full-page views (RunsPage, RunDetailPage, etc.)
+    components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo)
+    hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE)
+    lib/
+      api.ts          Client-side fetch wrapper for /api/dashboard/*
+      types.ts        Shared TypeScript types
+vite.config.js        Vite config (React plugin, Tailwind, API proxy)
+tsconfig.dashboard.json  TypeScript config for React JSX (separate from server)
 tests/                Unit and integration tests
 docs/                 Documentation
 ```
@@ -61,7 +79,10 @@ docs/                 Documentation
 | ------------------------------------ | -------------------------------------------------- |
 | `cinnamon <command>`                 | CLI for the Cinnamon API (see below)               |
 | `bun run cli`                        | Same as `cinnamon` if not globally linked          |
-| `bun run server`                     | Start the HTTP API server                          |
+| `bun run dev`                        | Start API server + Vite dashboard (dev mode, HMR)  |
+| `bun run server`                     | Start the HTTP API server (serves built dashboard) |
+| `bun run dev:dashboard`              | Start Vite dashboard dev server only               |
+| `bun run build:dashboard`            | Build dashboard to `dist/client/`                  |
 | `bun run worker`                     | Process queued jobs                                |
 | `bun run scheduler`                  | Register cron schedules                            |
 | `bun run trigger <job-name> [data]`  | Enqueue a named BullMQ job                         |
@@ -94,7 +115,7 @@ This will:
 
 1. Start Postgres and Redis
 2. Run database migrations (one-shot `migrate` container)
-3. Start the API server (HTTP + dashboard on port 3000), worker, and scheduler
+3. Build the dashboard and start the API server (port 3000), worker, and scheduler
 
 Monitor logs:
 
@@ -105,8 +126,10 @@ docker compose logs -f api worker scheduler
 Rebuild after code changes:
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 ```
+
+> **Note:** `--force-recreate` ensures the scheduler re-runs and reconciles any schedule changes. Without it, Docker may reuse an existing container if the image hash hasn't changed. See [Deployment](deploy.md) for details on code vs state.
 
 ### Deploying to a remote machine
 

@@ -13,6 +13,6 @@
     }
   },
   "files": {
-    "includes": ["**/*.ts"]
+    "includes": ["**/*.ts", "**/*.tsx"]
   }
 }

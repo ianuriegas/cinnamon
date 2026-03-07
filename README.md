@@ -13,6 +13,7 @@ Multi-tenant job orchestrator powered by BullMQ, Postgres, and Hono. Trigger job
 flowchart LR
   CLI["trigger CLI"] --> Queue["BullMQ queue (Redis)"]
   API["API server (Hono)"] -->|"POST /v1/enqueue"| Queue
+  Dashboard["Dashboard (React SPA)"] -->|"/api/dashboard/*"| API
   Queue --> Worker[worker]
   Worker --> Handler[job handler]
   Worker --> JobsLog["jobs_log (Postgres)"]
@@ -37,14 +38,23 @@ bun run db:migrate
 bun run scripts/seed-team.ts
 ```
 
-3. Open two terminals — one for the worker, one for the API server:
+3. Open two terminals — one for the worker, one for the API server + dashboard:
 
 ```bash
 bun run worker
 ```
 
 ```bash
-bun run server
+bun run dev   # starts API server (:3000) + Vite dashboard (:5173)
+```
+
+Open `http://localhost:5173/dashboard` to view the dashboard (with HMR).
+
+For production, build the dashboard first and use the API server alone:
+
+```bash
+bun run build:dashboard
+bun run server   # serves dashboard at http://localhost:3000/dashboard
 ```
 
 4. Set up the CLI (optional but recommended):

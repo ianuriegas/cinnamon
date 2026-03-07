@@ -283,7 +283,9 @@ curl -s -X POST http://localhost:3000/v1/jobs/shell/trigger \
 
 ## Dashboard API
 
-The dashboard API (`/api/dashboard/*`) is served alongside the React SPA. These endpoints power the web dashboard and are **not** authenticated (intended for internal/VPN use only).
+The dashboard API (`/api/dashboard/*`) is served alongside the React SPA. These endpoints power the web dashboard.
+
+When `SESSION_SECRET` and Google OAuth credentials are configured, all `/api/dashboard/*` endpoints require a valid session cookie (Google OAuth sign-in). Mutating endpoints (`POST`) also require a matching `Origin` header (CSRF protection). When those env vars are unset, the dashboard is open — useful for local dev. See `.env.example` for details.
 
 | Method | Path                              | Description                                   |
 | ------ | --------------------------------- | --------------------------------------------- |

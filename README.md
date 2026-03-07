@@ -80,6 +80,26 @@ curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
   -H "Authorization: Bearer cin_<your_key>" | jq
 ```
 
+## Dashboard auth (optional)
+
+The dashboard is open by default for local dev. To require Google sign-in:
+
+1. Place your GCP OAuth `client_secret.json` in the project root (or set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`).
+2. Generate a session secret and add it to `.env`:
+
+```bash
+bun run generate:secret
+# paste output as SESSION_SECRET in .env
+```
+
+3. Optionally restrict access to specific emails:
+
+```
+ALLOWED_EMAILS=you@gmail.com,teammate@gmail.com
+```
+
+When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open. See `.env.example` for all options.
+
 ## Docs
 
 - [API reference](docs/api.md) -- all endpoints, query params, and curl examples

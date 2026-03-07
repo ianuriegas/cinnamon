@@ -113,9 +113,11 @@ docs/                 Documentation
 Run the full stack (Postgres, Redis, API server, worker, scheduler) with a single command:
 
 ```bash
-cp .env.example .env   # then fill in credentials
+cp .env.example .env
 docker compose up -d
 ```
+
+Fill in credentials in `.env` before running.
 
 This will:
 
@@ -153,12 +155,11 @@ The CLI wraps the HTTP API so engineers don't need to memorize curl commands.
 
 ### Setup
 
+Add bun's global bin to your PATH (one-time), then link the binary:
+
 ```bash
-# Add bun's global bin to your PATH (one-time)
 echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-
-# Link the global binary
 bun link
 ```
 

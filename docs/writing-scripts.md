@@ -32,12 +32,12 @@ The full stdout string is stored in `jobs_log.result.stdout`.
 
 ## Structured JSON
 
-For machine-readable results, print a single JSON object on the **last line** of stdout:
+For machine-readable results, print a single JSON object on the **last line** of stdout. Log lines before the JSON are fine; the JSON must be the last line.
 
 ```python
 import json
 
-print("Starting work...")       # log lines are fine
+print("Starting work...")
 print("Processing items...")
 
 result = {
@@ -45,7 +45,7 @@ result = {
     "items_processed": 42,
     "summary": "Processed 42 items successfully",
 }
-print(json.dumps(result))       # must be the last line
+print(json.dumps(result))
 ```
 
 Enqueue with `parseJsonOutput: true`:

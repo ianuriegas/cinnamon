@@ -45,8 +45,10 @@ bun run worker
 ```
 
 ```bash
-bun run dev   # starts API server (:3000) + Vite dashboard (:5173)
+bun run dev
 ```
+
+Starts API server (:3000) and Vite dashboard (:5173).
 
 Open `http://localhost:5173/dashboard` to view the dashboard (with HMR).
 
@@ -54,16 +56,20 @@ For production, build the dashboard first and use the API server alone:
 
 ```bash
 bun run build:dashboard
-bun run server   # serves dashboard at http://localhost:3000/dashboard
+bun run server
 ```
+
+Serves the dashboard at `http://localhost:3000/dashboard`.
 
 4. Set up the CLI (optional but recommended):
 
 ```bash
 bun link
 export PATH="$HOME/.bun/bin:$PATH"
-cinnamon init   # enter your API URL and cin_... key
+cinnamon init
 ```
+
+Enter your API URL and `cin_...` key when prompted.
 
 Trigger a job and check status:
 
@@ -89,8 +95,9 @@ The dashboard is open by default for local dev. To require Google sign-in:
 
 ```bash
 bun run generate:secret
-# paste output as SESSION_SECRET in .env
 ```
+
+Paste the output as `SESSION_SECRET` in `.env`.
 
 3. Optionally restrict access to specific emails:
 

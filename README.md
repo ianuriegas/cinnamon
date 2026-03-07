@@ -45,8 +45,10 @@ bun run worker
 ```
 
 ```bash
-bun run dev   # starts API server (:3000) + Vite dashboard (:5173)
+bun run dev
 ```
+
+Starts API server (:3000) and Vite dashboard (:5173).
 
 Open `http://localhost:5173/dashboard` to view the dashboard (with HMR).
 
@@ -54,16 +56,20 @@ For production, build the dashboard first and use the API server alone:
 
 ```bash
 bun run build:dashboard
-bun run server   # serves dashboard at http://localhost:3000/dashboard
+bun run server
 ```
+
+Serves the dashboard at `http://localhost:3000/dashboard`.
 
 4. Set up the CLI (optional but recommended):
 
 ```bash
 bun link
 export PATH="$HOME/.bun/bin:$PATH"
-cinnamon init   # enter your API URL and cin_... key
+cinnamon init
 ```
+
+Enter your API URL and `cin_...` key when prompted.
 
 Trigger a job and check status:
 
@@ -79,6 +85,27 @@ Or use curl directly:
 curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
   -H "Authorization: Bearer cin_<your_key>" | jq
 ```
+
+## Dashboard auth (optional)
+
+The dashboard is open by default for local dev. To require Google sign-in:
+
+1. Place your GCP OAuth `client_secret.json` in the project root (or set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`).
+2. Generate a session secret and add it to `.env`:
+
+```bash
+bun run generate:secret
+```
+
+Paste the output as `SESSION_SECRET` in `.env`.
+
+3. Optionally restrict access to specific emails:
+
+```
+ALLOWED_EMAILS=you@gmail.com,teammate@gmail.com
+```
+
+When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open. See `.env.example` for all options.
 
 ## Docs
 

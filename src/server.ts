@@ -1,12 +1,16 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 
 import { getJobHandlers, getJobOptions } from "@/config/dynamic-registry.ts";
-import { getEnv } from "@/config/env.ts";
+import { getEnv, isDashboardAuthEnabled } from "@/config/env.ts";
 import { loadConfig } from "@/config/load-config.ts";
 import { pool } from "@/db/index.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
+import { csrfMiddleware } from "@/src/auth/csrf.ts";
+import { dashboardAuthMiddleware } from "@/src/auth/dashboard-middleware.ts";
+import { createAuthRoutes } from "@/src/auth/routes.ts";
 import { createDashboardApi } from "@/src/dashboard/api.ts";
 import { authMiddleware } from "@/src/middleware/auth.ts";
 import { createJobsRouter } from "@/src/routes/jobs.ts";
@@ -23,7 +27,13 @@ type AppEnv = {
 
 export const app = new Hono<AppEnv>();
 
+app.use("*", secureHeaders());
+
 app.get("/health", (c) => c.json({ status: "ok" }));
+
+// --- Auth routes (before dashboard) ---
+const authRoutes = createAuthRoutes();
+app.route("/auth", authRoutes);
 
 const v1 = new Hono<AppEnv>();
 v1.use("*", authMiddleware);
@@ -51,6 +61,10 @@ const jobsRouter = createJobsRouter({ jobsQueue, jobHandlers, config });
 v1.route("/jobs", jobsRouter);
 
 app.route("/v1", v1);
+
+// --- Dashboard API (auth + CSRF protected) ---
+app.use("/api/dashboard/*", dashboardAuthMiddleware);
+app.use("/api/dashboard/*", csrfMiddleware);
 
 const dashboardApi = createDashboardApi({ config, jobsQueue, jobHandlers });
 app.route("/api/dashboard", dashboardApi);
@@ -82,7 +96,10 @@ if (isDirectExecution(import.meta.url)) {
  ╚═════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
 `);
     console.log(`  Listening on http://localhost:${info.port}`);
-    console.log(`  Dashboard  http://localhost:${info.port}/dashboard\n`);
+    console.log(`  Dashboard  http://localhost:${info.port}/dashboard`);
+    console.log(
+      `  Auth       ${isDashboardAuthEnabled() ? "Google OAuth enabled" : "disabled (no GOOGLE_CLIENT_ID)"}\n`,
+    );
   });
 
   const shutdown = async () => {

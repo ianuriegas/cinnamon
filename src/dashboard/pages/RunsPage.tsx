@@ -30,12 +30,14 @@ export function RunsPage() {
     offset,
   });
   const [jobNames, setJobNames] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetchRuns(filters, { limit, offset });
     setRuns(res.data);
     setPagination(res.pagination);
     setJobNames(res.jobNames);
+    setIsLoading(false);
   }, [filters, limit, offset]);
 
   useEffect(() => {
@@ -114,7 +116,44 @@ export function RunsPage() {
 
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body p-0">
-          {runs.length === 0 ? (
+          {isLoading ? (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Job Name</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>Started</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
+                    <tr key={i}>
+                      <td>
+                        <div className="skeleton h-4 w-32" />
+                        <div className="skeleton h-3 w-20 mt-1" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-5 w-16 rounded-full" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-4 w-12" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-4 w-20" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-6 w-10" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : runs.length === 0 ? (
             <div className="text-center py-12 text-base-content/60">
               <p className="text-lg">No job runs found</p>
               <p className="text-sm mt-1">Try adjusting your filters or trigger a job</p>

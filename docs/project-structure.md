@@ -49,6 +49,11 @@ src/
   job-types.ts        Shared job type definitions
   notifications.ts    Webhook dispatcher (Discord, Slack, generic) with retry
   payload.ts          CLI payload parsing
+  auth/               Dashboard OAuth (Google) and session management
+    dashboard-auth.ts   PKCE, token exchange, JWT session create/verify
+    routes.ts           /auth/login, /auth/google, /auth/callback, /auth/logout, /auth/me
+    dashboard-middleware.ts  Session cookie guard for /api/dashboard/*
+    csrf.ts             Origin/Referer validation on mutating endpoints
   middleware/
     auth.ts           Bearer token auth middleware for Hono
   routes/
@@ -90,6 +95,7 @@ docs/                 Documentation
 | `bun run job:cinnamon -- 5`          | Run `jobs/cinnamon.ts` directly from 5             |
 | `bun run job:dry`                    | Interactive menu; requests dry-run mode             |
 | `bun run scripts/seed-team.ts [name] [label]` | Create a team and API key (default: "Default Team") |
+| `bun run generate:secret`            | Generate a random `SESSION_SECRET` for dashboard auth |
 | `bun run auth:spotify`               | Obtain a Spotify refresh token interactively       |
 | `bun run db:migrate`                 | Apply pending Drizzle migrations                   |
 | `bun run db:generate`                | Generate a migration from schema changes           |
@@ -107,9 +113,11 @@ docs/                 Documentation
 Run the full stack (Postgres, Redis, API server, worker, scheduler) with a single command:
 
 ```bash
-cp .env.example .env   # then fill in credentials
+cp .env.example .env
 docker compose up -d
 ```
+
+Fill in credentials in `.env` before running.
 
 This will:
 
@@ -147,12 +155,11 @@ The CLI wraps the HTTP API so engineers don't need to memorize curl commands.
 
 ### Setup
 
+Add bun's global bin to your PATH (one-time), then link the binary:
+
 ```bash
-# Add bun's global bin to your PATH (one-time)
 echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-
-# Link the global binary
 bun link
 ```
 

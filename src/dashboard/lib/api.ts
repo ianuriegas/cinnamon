@@ -2,14 +2,22 @@ import type { DefinitionRow, PaginationInfo, RunRow, RunsFilters, ScheduleRow } 
 
 const BASE = "/api/dashboard";
 
+function handleUnauthorized(res: Response): void {
+  if (res.status === 401) {
+    window.location.href = "/auth/login";
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(`${BASE}${path}`, { credentials: "include" });
+  handleUnauthorized(res);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
 async function post<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { method: "POST" });
+  const res = await fetch(`${BASE}${path}`, { method: "POST", credentials: "include" });
+  handleUnauthorized(res);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -32,7 +40,8 @@ export async function fetchRun(id: string): Promise<{ data: RunRow }> {
 }
 
 export async function fetchRunRaw(id: string): Promise<string> {
-  const res = await fetch(`${BASE}/runs/${id}/raw`);
+  const res = await fetch(`${BASE}/runs/${id}/raw`, { credentials: "include" });
+  handleUnauthorized(res);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.text();
 }

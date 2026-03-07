@@ -24,10 +24,12 @@ function formatNextRun(isoString: string | null): string {
 
 export function SchedulesPage() {
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetchSchedules();
     setSchedules(res.data);
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -41,7 +43,51 @@ export function SchedulesPage() {
         <span className="text-sm text-base-content/60">{schedules.length} scheduled jobs</span>
       </div>
 
-      {schedules.length === 0 ? (
+      {isLoading ? (
+        <div className="card bg-base-100 shadow-sm">
+          <div className="card-body p-0">
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Job Name</th>
+                    <th>Cron Pattern</th>
+                    <th>Next Run</th>
+                    <th>Runs</th>
+                    <th>Success Rate</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 4 }, (_, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
+                    <tr key={i}>
+                      <td>
+                        <div className="skeleton h-4 w-28" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-4 w-24" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-4 w-16" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-4 w-20" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-4 w-10" />
+                      </td>
+                      <td>
+                        <div className="skeleton h-5 w-16 rounded-full" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : schedules.length === 0 ? (
         <div className="text-center py-12 text-base-content/60">
           <p className="text-lg">No scheduled jobs</p>
           <p className="text-sm mt-1">

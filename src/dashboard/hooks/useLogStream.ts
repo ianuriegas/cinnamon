@@ -40,7 +40,7 @@ export function useLogStream(jobId: string | undefined, enabled: boolean): LogSt
     nextId.current = 0;
 
     const url = streamRunUrl(jobId);
-    const es = new EventSource(url);
+    const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
     es.addEventListener("log", (e) => {

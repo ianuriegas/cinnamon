@@ -32,9 +32,12 @@ export function BaseLayout() {
               </li>
             ))}
           </ul>
+          <a href="/auth/logout" className="btn btn-ghost btn-sm ml-2" aria-label="Logout">
+            Logout
+          </a>
           <button
             type="button"
-            className="btn btn-ghost btn-circle ml-2"
+            className="btn btn-ghost btn-circle ml-1"
             onClick={toggle}
             aria-label="Toggle theme"
           >

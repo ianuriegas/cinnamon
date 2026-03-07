@@ -13,7 +13,10 @@ import {
   verifyGoogleIdToken,
 } from "./dashboard-auth.ts";
 
-const isProduction = () => process.env.NODE_ENV === "production";
+function shouldUseSecureCookies(): boolean {
+  const baseUrl = process.env.BASE_URL ?? "";
+  return baseUrl.startsWith("https://");
+}
 
 export function createAuthRoutes() {
   const router = new Hono();
@@ -59,7 +62,7 @@ export function createAuthRoutes() {
 
   router.get("/google", (c) => {
     const { url, state, codeVerifier } = getGoogleAuthUrl();
-    const secure = isProduction();
+    const secure = shouldUseSecureCookies();
 
     setCookie(c, OAUTH_STATE_COOKIE, state, {
       path: "/",
@@ -112,7 +115,7 @@ export function createAuthRoutes() {
       }
 
       const jwt = await createSessionJwt(tokens);
-      const secure = isProduction();
+      const secure = shouldUseSecureCookies();
       const sessionMaxAge = 60 * 60 * 24 * 7;
 
       setCookie(c, SESSION_COOKIE, jwt, {

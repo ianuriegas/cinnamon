@@ -18,6 +18,19 @@ function shouldUseSecureCookies(): boolean {
   return baseUrl.startsWith("https://");
 }
 
+/** Build redirect URI from request so cookie origin matches callback URL. */
+function getRedirectUriFromRequest(c: {
+  req: { header: (name: string) => string | undefined };
+}): string {
+  const host = c.req.header("host");
+  if (!host) {
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+    return `${baseUrl.replace(/\/$/, "")}/auth/callback`;
+  }
+  const proto = c.req.header("x-forwarded-proto")?.toLowerCase() === "https" ? "https" : "http";
+  return `${proto}://${host}/auth/callback`;
+}
+
 export function createAuthRoutes() {
   const router = new Hono();
 
@@ -61,7 +74,8 @@ export function createAuthRoutes() {
   });
 
   router.get("/google", (c) => {
-    const { url, state, codeVerifier } = getGoogleAuthUrl();
+    const redirectUri = getRedirectUriFromRequest(c);
+    const { url, state, codeVerifier } = getGoogleAuthUrl(redirectUri);
     const secure = shouldUseSecureCookies();
 
     setCookie(c, OAUTH_STATE_COOKIE, state, {
@@ -103,7 +117,8 @@ export function createAuthRoutes() {
     }
 
     try {
-      const tokens = await exchangeCodeForTokens(code, storedVerifier);
+      const redirectUri = getRedirectUriFromRequest(c);
+      const tokens = await exchangeCodeForTokens(code, storedVerifier, redirectUri);
 
       if (tokens.id_token) {
         const claims = await verifyGoogleIdToken(tokens.id_token);

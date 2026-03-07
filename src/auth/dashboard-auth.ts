@@ -55,12 +55,15 @@ export function generateState(): string {
 // Google OAuth helpers
 // ---------------------------------------------------------------------------
 
-export function getGoogleAuthUrl(): { url: string; state: string; codeVerifier: string } {
-  const { googleClientId, baseUrl } = requireAuthEnv();
+export function getGoogleAuthUrl(redirectUri: string): {
+  url: string;
+  state: string;
+  codeVerifier: string;
+} {
+  const { googleClientId } = requireAuthEnv();
   const state = generateState();
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
-  const redirectUri = `${baseUrl}/auth/callback`;
 
   const params = new URLSearchParams({
     client_id: googleClientId,
@@ -86,9 +89,9 @@ interface TokenResponse {
 export async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
+  redirectUri: string,
 ): Promise<TokenResponse> {
-  const { googleClientId, googleClientSecret, baseUrl } = requireAuthEnv();
-  const redirectUri = `${baseUrl}/auth/callback`;
+  const { googleClientId, googleClientSecret } = requireAuthEnv();
 
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",

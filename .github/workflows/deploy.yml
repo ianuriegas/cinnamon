@@ -29,8 +29,6 @@ jobs:
             git pull origin main
             docker compose up -d --build --force-recreate
             docker image prune -f
+            curl -sf --retry 24 --retry-delay 5 --retry-all-errors -o /dev/null http://localhost:3000/health
 
-      - name: Health check
-        run: |
-          curl -sf --retry 24 --retry-delay 5 --retry-all-errors -o /dev/null \
-            "http://${{ secrets.MAC_IP }}:3000/health"
+

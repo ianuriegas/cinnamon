@@ -1,3 +1,6 @@
+import { useTimezoneContext } from "../contexts/TimezoneContext";
+import { formatInTimezone } from "../hooks/useTimezone";
+
 function formatTimeAgo(date: string | null): string {
   if (!date) return "—";
   const now = Date.now();
@@ -11,9 +14,11 @@ function formatTimeAgo(date: string | null): string {
 }
 
 export function TimeAgo({ date }: { date: string | null }) {
+  const { timezone } = useTimezoneContext();
   const iso = date ?? "";
+  const tooltip = date ? formatInTimezone(date, timezone) : "";
   return (
-    <time className="text-sm" dateTime={iso} title={iso}>
+    <time className="text-sm" dateTime={iso} title={tooltip}>
       {formatTimeAgo(date)}
     </time>
   );

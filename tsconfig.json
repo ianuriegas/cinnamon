@@ -28,6 +28,7 @@
     "src/dashboard/pages",
     "src/dashboard/components",
     "src/dashboard/hooks",
+    "src/dashboard/contexts",
     "src/dashboard/lib",
     "vite.config.js"
   ]

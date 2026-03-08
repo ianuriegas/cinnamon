@@ -67,8 +67,9 @@ src/
     layouts/
       BaseLayout.tsx  Shell layout (navbar, theme toggle, <Outlet />)
     pages/            Full-page views (RunsPage, RunDetailPage, etc.)
-    components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo)
-    hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE)
+    components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo, ProfileDropdown)
+    contexts/         React contexts (TimezoneContext)
+    hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE), useAuth, useTimezone
     lib/
       api.ts          Client-side fetch wrapper for /api/dashboard/*
       types.ts        Shared TypeScript types

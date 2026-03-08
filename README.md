@@ -99,13 +99,19 @@ bun run generate:secret
 
 Paste the output as `SESSION_SECRET` in `.env`.
 
-3. Optionally restrict access to specific emails:
+3. For local dev with `bun run dev` (Vite on port 5173), create `.env.local` with `BASE_URL=http://localhost:5173` so the OAuth callback and session cookie use the same origin. Keep `BASE_URL=http://localhost:3000` in `.env` for Docker/production. `.env.local` overrides `.env` when running locally and is gitignored.
+
+4. Optionally restrict access to specific emails:
 
 ```
 ALLOWED_EMAILS=you@gmail.com,teammate@gmail.com
 ```
 
-When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open. See `.env.example` for all options.
+When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open.
+
+**Env files:** `.env` holds shared config (and is used by Docker Compose). `.env.local` (gitignored) overrides it for `bun run dev` — use it for `BASE_URL=http://localhost:5173` so OAuth works with the Vite dev server.
+
+See `.env.example` for all options.
 
 ## Docs
 

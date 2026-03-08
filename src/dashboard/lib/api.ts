@@ -65,3 +65,20 @@ export async function cancelRun(id: string): Promise<{ status?: string; error?: 
 export function streamRunUrl(id: string): string {
   return `${BASE}/runs/${id}/stream`;
 }
+
+export interface AuthUser {
+  email: string;
+  name: string;
+  picture: string;
+}
+
+export async function fetchAuthUser(): Promise<AuthUser | null> {
+  try {
+    const res = await fetch("/auth/me", { credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.authenticated ? data.user : null;
+  } catch {
+    return null;
+  }
+}

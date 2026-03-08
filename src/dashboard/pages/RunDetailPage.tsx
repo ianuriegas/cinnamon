@@ -3,16 +3,13 @@ import { Link, useParams } from "react-router";
 import { CopyButton } from "../components/CopyButton";
 import { Duration } from "../components/Duration";
 import { StatusBadge } from "../components/StatusBadge";
+import { useTimezoneContext } from "../contexts/TimezoneContext";
 import { type LogLine, useLogStream } from "../hooks/useLogStream";
 import { usePolling } from "../hooks/usePolling";
+import { formatInTimezone } from "../hooks/useTimezone";
 import { cancelRun, fetchRun } from "../lib/api";
 import type { RunRow } from "../lib/types";
 import { formatJson, isShellResult } from "../lib/types";
-
-function formatTimestamp(date: string | null): string {
-  if (!date) return "—";
-  return date.replace("T", " ").replace("Z", " UTC");
-}
 
 function LogBlock({
   title,
@@ -148,6 +145,7 @@ function CancelButton({ jobId, onCancelled }: { jobId: string; onCancelled: () =
 }
 
 export function RunDetailPage() {
+  const { timezone } = useTimezoneContext();
   const { id } = useParams<{ id: string }>();
   const [run, setRun] = useState<RunRow | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -233,11 +231,11 @@ export function RunDetailPage() {
                 <Duration startedAt={run.startedAt} finishedAt={run.finishedAt} />
               </dd>
               <dt className="text-base-content/60">Created</dt>
-              <dd className="font-mono text-xs">{formatTimestamp(run.createdAt)}</dd>
+              <dd className="font-mono text-xs">{formatInTimezone(run.createdAt, timezone)}</dd>
               <dt className="text-base-content/60">Started</dt>
-              <dd className="font-mono text-xs">{formatTimestamp(run.startedAt)}</dd>
+              <dd className="font-mono text-xs">{formatInTimezone(run.startedAt, timezone)}</dd>
               <dt className="text-base-content/60">Finished</dt>
-              <dd className="font-mono text-xs">{formatTimestamp(run.finishedAt)}</dd>
+              <dd className="font-mono text-xs">{formatInTimezone(run.finishedAt, timezone)}</dd>
             </dl>
           </div>
         </div>

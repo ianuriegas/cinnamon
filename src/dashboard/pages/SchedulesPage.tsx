@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { StatusBadge } from "../components/StatusBadge";
+import { useTimezoneContext } from "../contexts/TimezoneContext";
+import { formatInTimezone } from "../hooks/useTimezone";
 import { fetchSchedules } from "../lib/api";
 import type { ScheduleRow } from "../lib/types";
 
@@ -23,6 +25,7 @@ function formatNextRun(isoString: string | null): string {
 }
 
 export function SchedulesPage() {
+  const { timezone } = useTimezoneContext();
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -123,7 +126,9 @@ export function SchedulesPage() {
                       <td>
                         <code className="text-xs bg-base-200 px-2 py-0.5 rounded">{s.pattern}</code>
                       </td>
-                      <td className="text-sm">{formatNextRun(s.next)}</td>
+                      <td className="text-sm" title={formatInTimezone(s.next, timezone)}>
+                        {formatNextRun(s.next)}
+                      </td>
                       <td className="text-sm">
                         {s.stats.total}{" "}
                         <span className="text-base-content/50">

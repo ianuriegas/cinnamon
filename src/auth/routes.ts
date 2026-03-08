@@ -30,52 +30,20 @@ export function createAuthRoutes() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Sign in — Cinnamon</title>
+  <script>
+    (function(){var t=localStorage.getItem("cinnamon-theme")||"gruvbox-light";document.documentElement.setAttribute("data-theme",t);})();
+  </script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f2e5bc;
-      color: #3c3836;
-    }
-    .card {
-      background: #fbf1c7;
-      border-radius: 1rem;
-      padding: 2.5rem 2rem;
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 4px 24px rgba(60,56,54,0.12);
-    }
-    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
-    p { color: #665c54; margin-bottom: 1.5rem; }
-    .btn {
-      display: inline-block;
-      padding: 0.75rem 1.5rem;
-      background: #d65d0e;
-      color: #fbf1c7;
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn:hover { background: #af3a03; }
-    .error {
-      background: #cc241d;
-      color: #fbf1c7;
-      padding: 0.875rem 1.25rem;
-      border-radius: 0.5rem;
-      margin-bottom: 1.25rem;
-      font-size: 0.875rem;
-      line-height: 1.4;
-      font-weight: 500;
-    }
+    [data-theme="gruvbox-light"]{--login-bg:#f2e5bc;--login-card:#fbf1c7;--login-text:#3c3836;--login-muted:#665c54;--login-accent:#d65d0e;--login-accent-hover:#af3a03;--login-error:#cc241d;--login-error-text:#fbf1c7;}
+    [data-theme="gruvbox-dark"]{--login-bg:#282828;--login-card:#3c3836;--login-text:#ebdbb2;--login-muted:#a89984;--login-accent:#fe8019;--login-accent-hover:#d65d0e;--login-error:#cc241d;--login-error-text:#fbf1c7;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--login-bg);color:var(--login-text);}
+    .card{background:var(--login-card);border-radius:1rem;padding:2.5rem 2rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.15);}
+    h1{font-size:1.75rem;font-weight:700;margin-bottom:0.5rem;}
+    p{color:var(--login-muted);margin-bottom:1.5rem;}
+    .btn{display:inline-block;padding:0.75rem 1.5rem;background:var(--login-accent);color:var(--login-error-text);border:none;border-radius:0.5rem;font-size:1rem;font-weight:600;text-decoration:none;cursor:pointer;transition:background 0.15s;}
+    .btn:hover{background:var(--login-accent-hover);}
+    .error{background:var(--login-error);color:var(--login-error-text);padding:0.875rem 1.25rem;border-radius:0.5rem;margin-bottom:1.25rem;font-size:0.875rem;line-height:1.4;font-weight:500;}
   </style>
 </head>
 <body>

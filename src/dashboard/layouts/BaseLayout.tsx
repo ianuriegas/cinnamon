@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from "react-router";
+import { ProfileDropdown } from "../components/ProfileDropdown";
+import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 
 const NAV_ITEMS = [
@@ -9,6 +11,7 @@ const NAV_ITEMS = [
 
 export function BaseLayout() {
   const { isDark, toggle } = useTheme();
+  const { user, isLoading } = useAuth();
 
   return (
     <>
@@ -18,7 +21,7 @@ export function BaseLayout() {
             🫙 Cinnamon
           </NavLink>
         </div>
-        <div className="flex-none">
+        <div className="flex-none gap-1">
           <ul className="menu menu-horizontal px-1 gap-1">
             {NAV_ITEMS.map((item) => (
               <li key={item.to}>
@@ -32,9 +35,6 @@ export function BaseLayout() {
               </li>
             ))}
           </ul>
-          <a href="/auth/logout" className="btn btn-ghost btn-sm ml-2" aria-label="Logout">
-            Logout
-          </a>
           <button
             type="button"
             className="btn btn-ghost btn-circle ml-1"
@@ -76,6 +76,7 @@ export function BaseLayout() {
               </svg>
             )}
           </button>
+          <ProfileDropdown user={user} isLoading={isLoading} />
         </div>
       </div>
 

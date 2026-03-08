@@ -1,6 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import "dotenv/config";
+import { config } from "dotenv";
+
+// Load .env first, then .env.local (overrides). Docker Compose uses .env only.
+config();
+if (existsSync(".env.local")) {
+  config({ path: ".env.local", override: true });
+}
+
 import { parseRedisConnection } from "./redis.ts";
 
 const DEFAULT_REDIS_URL = "redis://localhost:6379";

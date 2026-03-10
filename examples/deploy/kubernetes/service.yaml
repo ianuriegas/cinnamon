@@ -1,0 +1,17 @@
+# ClusterIP service for the cinnamon API
+apiVersion: v1
+kind: Service
+metadata:
+  name: cinnamon-api
+  labels:
+    app: cinnamon
+    component: api
+spec:
+  type: ClusterIP
+  selector:
+    app: cinnamon
+    component: api
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP

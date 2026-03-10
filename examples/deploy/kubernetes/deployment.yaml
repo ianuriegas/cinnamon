@@ -1,0 +1,66 @@
+# Cinnamon API + Worker deployment
+# TODO: Full K8s support is planned. This is a minimal preview.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cinnamon-api
+  labels:
+    app: cinnamon
+    component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cinnamon
+      component: api
+  template:
+    metadata:
+      labels:
+        app: cinnamon
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: cinnamon:latest  # TODO: replace with your registry image
+          command: ["bun", "run", "server"]
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: cinnamon-secrets
+          env:
+            - name: NODE_ENV
+              value: production
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cinnamon-worker
+  labels:
+    app: cinnamon
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cinnamon
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: cinnamon
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: cinnamon:latest  # TODO: replace with your registry image
+          command: ["bun", "run", "worker"]
+          envFrom:
+            - secretRef:
+                name: cinnamon-secrets

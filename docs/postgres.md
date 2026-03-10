@@ -38,15 +38,15 @@ Test query:
 docker compose exec postgres psql -U cinnamon -d cinnamon -c "SELECT now();"
 ```
 
-## Remote access via Tailscale
+## Remote access
 
-Docker Compose exposes Postgres on port 5432, and Tailscale makes the host reachable at its `100.x.y.z` IP. Connect from any machine on the Tailscale network with no tunnels or port forwarding.
+Docker Compose exposes Postgres on port 5432. If the host is reachable over a VPN or network, you can connect directly.
 
-### Beekeeper Studio / GUI client
+### GUI client (Beekeeper Studio, pgAdmin, etc.)
 
 | Setting  | Value                                          |
 | -------- | ---------------------------------------------- |
-| Host     | Tailscale IP of the target MacBook             |
+| Host     | IP or hostname of the target machine           |
 | Port     | `5432`                                         |
 | User     | `POSTGRES_USER` from the target's `.env`       |
 | Password | `POSTGRES_PASSWORD` from the target's `.env`   |
@@ -55,7 +55,7 @@ Docker Compose exposes Postgres on port 5432, and Tailscale makes the host reach
 ### psql from another machine
 
 ```bash
-psql postgresql://<user>:<password>@<tailscale-ip>:5432/<database>
+psql postgresql://<user>:<password>@<host>:5432/<database>
 ```
 
 ### Useful queries
@@ -82,7 +82,7 @@ curl -X POST http://<tailscale-ip>:3000/v1/enqueue \
 
 ### Via SSH + Docker
 
-SSH into the target MacBook and use `docker compose exec` to enqueue jobs on the running worker:
+SSH into the target machine and use `docker compose exec` to enqueue jobs on the running worker:
 
 ```bash
 ssh <mac-user>@<tailscale-ip>

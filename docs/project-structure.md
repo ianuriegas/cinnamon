@@ -20,6 +20,9 @@ jobs/
     scripts/          Example scripts (hello.py, example-json.py, slow.py)
   native-handlers.ts  Shell executor registration (framework internal)
 examples/             Reference implementations (not part of core)
+  jobs/spotify/       Spotify integration example
+  deploy/docker/      Docker Compose override for submodule usage
+  deploy/kubernetes/  Minimal K8s manifests (preview)
 cli/
   index.ts            CLI entrypoint (arg parsing, command dispatch)
   config.ts           Load ~/.cinnamon/config.json + env var / flag overrides
@@ -93,6 +96,7 @@ docs/                 Documentation
 | `bun run scripts/seed-team.ts [name] [label]` | Create a team and API key (default: "Default Team") |
 | `bun run generate:secret`            | Generate a random `SESSION_SECRET` for dashboard auth |
 | `bun run db:migrate`                 | Apply pending Drizzle migrations                   |
+| `bun run cinnamon:migrate`           | Alias for `db:migrate` (for submodule users)       |
 | `bun run db:generate`                | Generate a migration from schema changes           |
 | `bun run db:drop`                    | Interactively drop the latest migration            |
 | `bun run db:reset-local`             | Drop, recreate, and migrate local database         |

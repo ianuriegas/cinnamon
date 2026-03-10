@@ -1,27 +1,28 @@
 # cinnamon
 
-Multi-tenant job orchestrator powered by BullMQ, Postgres, and Hono. Trigger jobs via CLI or a protected HTTP API.
+A job orchestration framework powered by BullMQ, Postgres, and Hono. Define jobs in a config file, trigger them via CLI, HTTP API, or cron, and monitor everything through a built-in dashboard.
 
-- Language-agnostic: run Python, Bash, or any script via the shell job handler.
-- Multi-tenant: teams and API keys isolate workloads per tenant.
-- Durable: every job run is logged to the `jobs_log` table in Postgres.
-- Observable: query job history, check schedules, and debug failures through the REST API.
+- **Language-agnostic** -- run Python, Bash, Node, or any command. If it runs in a shell, cinnamon can orchestrate it.
+- **Multi-tenant** -- teams and API keys isolate workloads. Each job run is scoped to the team that triggered it.
+- **Durable** -- every run is logged to Postgres with status, stdout, stderr, timing, and structured results.
+- **Observable** -- query job history, inspect runs, check schedules, and stream live logs through the REST API or dashboard.
+- **Notifiable** -- get Slack, Discord, or generic webhook notifications on job success or failure.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  CLI["trigger CLI"] --> Queue["BullMQ queue (Redis)"]
-  API["API server (Hono)"] -->|"POST /v1/enqueue"| Queue
-  Dashboard["Dashboard (React SPA)"] -->|"/api/dashboard/*"| API
+  CLI["CLI"] --> Queue["BullMQ (Redis)"]
+  API["API server (Hono)"] -->|"POST /v1/jobs/:name/trigger"| Queue
+  Dashboard["Dashboard (React)"] -->|"/api/dashboard/*"| API
   Queue --> Worker[worker]
   Worker --> Handler[job handler]
-  Worker --> JobsLog["jobs_log (Postgres)"]
+  Worker --> JobsLog["cinnamon.jobs_log (Postgres)"]
 ```
 
 ## Quick start
 
-Requires Bun and Docker Compose.
+Requires [Bun](https://bun.sh) and Docker Compose.
 
 1. Install dependencies, configure env, and start infrastructure:
 
@@ -38,7 +39,7 @@ bun run db:migrate
 bun run scripts/seed-team.ts
 ```
 
-3. Open two terminals — one for the worker, one for the API server + dashboard:
+3. Open two terminals -- one for the worker, one for the API server + dashboard:
 
 ```bash
 bun run worker
@@ -52,39 +53,120 @@ Starts API server (:3000) and Vite dashboard (:5173).
 
 Open `http://localhost:5173/dashboard` to view the dashboard (with HMR).
 
-For production, build the dashboard first and use the API server alone:
-
-```bash
-bun run build:dashboard
-bun run server
-```
-
-Serves the dashboard at `http://localhost:3000/dashboard`.
-
-4. Set up the CLI (optional but recommended):
-
-```bash
-bun link
-export PATH="$HOME/.bun/bin:$PATH"
-cinnamon init
-```
-
-Enter your API URL and `cin_...` key when prompted.
-
-Trigger a job and check status:
+4. Trigger a job:
 
 ```bash
 cinnamon trigger hello-world
 cinnamon status hello-world
-cinnamon logs <job-id>
 ```
 
-Or use curl directly:
+Or use curl:
 
 ```bash
 curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
   -H "Authorization: Bearer cin_<your_key>" | jq
 ```
+
+## How to add a job
+
+Three steps: config, script, trigger.
+
+**1. Define the job** in `cinnamon.config.ts`:
+
+```typescript
+export default defineConfig({
+  jobs: {
+    "my-job": {
+      command: "python3",
+      script: "./jobs/shell/scripts/my-script.py",
+      timeout: "30s",
+      description: "My custom job",
+    },
+  },
+});
+```
+
+Any command that can run in a shell works -- `python3`, `bash`, `bun`, `node`, `curl`, etc.
+
+**2. Create the script** at the path you specified:
+
+```python
+# jobs/shell/scripts/my-script.py
+import json
+
+result = {"processed": 42, "status": "ok"}
+print(json.dumps(result))  # last line of JSON stdout → stored in jobs_log.result
+```
+
+**3. Trigger it:**
+
+```bash
+cinnamon trigger my-job              # via CLI
+# or
+curl -X POST http://localhost:3000/v1/jobs/my-job/trigger \
+  -H "Authorization: Bearer cin_<your_key>"
+```
+
+Add a `schedule` field (cron syntax) to run it automatically:
+
+```typescript
+"my-job": {
+  command: "python3",
+  script: "./jobs/shell/scripts/my-script.py",
+  timeout: "30s",
+  schedule: "0 * * * *",  // every hour
+},
+```
+
+See [Jobs and config](docs/jobs.md) and [Writing scripts](docs/writing-scripts.md) for the full spec.
+
+## Notifications
+
+Jobs can send webhooks on success or failure. Cinnamon auto-detects Discord and Slack URLs and formats messages accordingly; any other URL receives a generic JSON payload.
+
+```typescript
+"my-job": {
+  command: "python3",
+  script: "./jobs/shell/scripts/my-script.py",
+  timeout: "30s",
+  notifications: {
+    on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],
+    on_success: [{ url: "${SLACK_WEBHOOK_URL}" }],
+  },
+},
+```
+
+`${VAR}` references are resolved from environment variables at runtime.
+
+## Using as a submodule
+
+Cinnamon is designed to be added as a git submodule inside your project. This keeps your jobs and config in your repo while pulling in the framework.
+
+```bash
+git submodule add https://github.com/<org>/cinnamon.git cinnamon
+```
+
+### Docker Compose merge
+
+Use Docker Compose's [merge](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/) feature to layer your app on top of cinnamon's base services:
+
+```bash
+docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up -d
+```
+
+Your override file adds project-specific config (env vars, volumes, extra services) while inheriting Postgres, Redis, worker, scheduler, and API from cinnamon.
+
+See [`examples/deploy/docker/`](examples/deploy/docker/) for a working override example.
+
+### Migrations
+
+Cinnamon tables live in a dedicated `cinnamon` Postgres schema, so they never collide with your app's tables. Run cinnamon's migrations separately from your own:
+
+```bash
+cd cinnamon && bun run cinnamon:migrate && cd ..
+```
+
+See [Migrations](docs/migrations.md) for the full dual-migration setup.
 
 ## Dashboard auth (optional)
 
@@ -109,19 +191,17 @@ ALLOWED_EMAILS=you@gmail.com,teammate@gmail.com
 
 When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open.
 
-**Env files:** `.env` holds shared config (and is used by Docker Compose). `.env.local` (gitignored) overrides it for `bun run dev` — use it for `BASE_URL=http://localhost:5173` so OAuth works with the Vite dev server.
-
 See `.env.example` for all options.
 
 ## Docs
 
-- [API reference](docs/api.md) -- all endpoints, query params, and curl examples
-- [Jobs and config](docs/jobs.md) -- shell jobs, `cinnamon.config.ts`
-- [Writing scripts](docs/writing-scripts.md) -- output contract for shell job scripts
-- [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI setup, Docker deployment
-- [Tests](docs/tests.md) -- test coverage and details
-- [Migrations](docs/migrations.md) -- schema namespacing, dual migration pattern for submodule users
-- [Deployment](docs/deploy.md) -- CI/CD and remote deployment
-- [Postgres](docs/postgres.md) -- health checks, SQL shell, useful queries
+- [API reference](docs/api.md) -- endpoints, query params, and curl examples
+- [Jobs and config](docs/jobs.md) -- job definitions, `cinnamon.config.ts`
+- [Writing scripts](docs/writing-scripts.md) -- output contract for shell scripts
+- [Migrations](docs/migrations.md) -- schema namespacing, dual migration pattern
+- [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI
+- [Deployment](docs/deploy.md) -- Docker Compose, CI/CD, remote deployment
+- [Postgres](docs/postgres.md) -- health checks, SQL shell, queries
 - [Redis](docs/redis.md) -- health checks, debugging
-- [Examples](examples/) -- reference implementations (e.g. Spotify integration)
+- [Tests](docs/tests.md) -- test coverage and details
+- [Examples](examples/) -- reference implementations (Spotify integration, deploy configs)

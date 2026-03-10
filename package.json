@@ -1,7 +1,7 @@
 {
   "name": "cinnamon",
   "version": "1.0.0",
-  "description": "Backend-first BullMQ demo with Postgres job logs.",
+  "description": "Job orchestration framework powered by BullMQ, Postgres, and Hono.",
   "main": "src/index.ts",
   "scripts": {
     "clean": "rm -rf node_modules",

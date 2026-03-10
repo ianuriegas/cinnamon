@@ -1,6 +1,13 @@
 # Examples
 
-Reference implementations demonstrating how to build jobs on top of cinnamon. These are **not** part of core cinnamon — they exist to show patterns you can follow in your own projects.
+Reference implementations and deployment templates. These are **not** part of core cinnamon -- they exist to show patterns you can follow in your own projects.
+
+## Deploy templates
+
+| Path | Purpose |
+|------|---------|
+| [`deploy/docker/`](deploy/docker/) | Docker Compose override for projects using cinnamon as a submodule |
+| [`deploy/kubernetes/`](deploy/kubernetes/) | Minimal K8s manifests (Deployment, Service, CronJob) -- preview |
 
 ## Spotify integration
 

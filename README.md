@@ -120,6 +120,7 @@ See `.env.example` for all options.
 - [Writing scripts](docs/writing-scripts.md) -- output contract for shell job scripts
 - [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI setup, Docker deployment
 - [Tests](docs/tests.md) -- test coverage and details
+- [Migrations](docs/migrations.md) -- schema namespacing, dual migration pattern for submodule users
 - [Deployment](docs/deploy.md) -- CI/CD and remote deployment
 - [Postgres](docs/postgres.md) -- health checks, SQL shell, useful queries
 - [Redis](docs/redis.md) -- health checks, debugging

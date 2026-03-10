@@ -64,7 +64,7 @@ Recent job history:
 
 ```sql
 SELECT id, job_name, status, error, started_at, finished_at
-FROM jobs_log ORDER BY created_at DESC LIMIT 20;
+FROM cinnamon.jobs_log ORDER BY created_at DESC LIMIT 20;
 ```
 
 ## Remote job triggering
@@ -100,8 +100,10 @@ ssh <mac-user>@<tailscale-ip> "cd ~/deployments/cinnamon && docker compose exec 
 
 ## Tables
 
+All core tables live in the `cinnamon` Postgres schema (not `public`). See [Migrations](migrations.md) for details.
+
 | Table                       | Purpose                                   |
 | --------------------------- | ----------------------------------------- |
-| `teams`                     | Tenant/team registry                      |
-| `api_keys`                  | Hashed API keys linked to teams           |
-| `jobs_log`                  | Durable log of all processed jobs         |
+| `cinnamon.teams`            | Tenant/team registry                      |
+| `cinnamon.api_keys`         | Hashed API keys linked to teams           |
+| `cinnamon.jobs_log`         | Durable log of all processed jobs         |

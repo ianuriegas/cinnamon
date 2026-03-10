@@ -11,8 +11,8 @@ config/
   load-config.ts      Config loader with validation
 db/
   connection.ts       Shared Postgres pool
-  schema/             Drizzle table definitions (jobs_log, teams, api_keys)
-  migrations/         Generated SQL migrations
+  schema/             Drizzle table definitions (cinnamon.jobs_log, cinnamon.teams, cinnamon.api_keys)
+  migrations/         Generated SQL migrations (single 0000 creates cinnamon schema + tables)
 jobs/
   _shared/            Shared utilities (isDirectExecution)
   cinnamon/           Countdown demo job (config-driven)

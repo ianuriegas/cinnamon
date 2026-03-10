@@ -21,8 +21,9 @@ jobs/
   native-handlers.ts  Shell executor registration (framework internal)
 examples/             Reference implementations (not part of core)
   jobs/spotify/       Spotify integration example
-  deploy/docker/      Docker Compose override for submodule usage
-  deploy/kubernetes/  Minimal K8s manifests (preview)
+  deploy/docker/         Docker Compose override for submodule usage
+  deploy/github-actions/ Reference CI/CD deploy workflow
+  deploy/kubernetes/     Minimal K8s manifests (preview)
 cli/
   index.ts            CLI entrypoint (arg parsing, command dispatch)
   config.ts           Load ~/.cinnamon/config.json + env var / flag overrides
@@ -136,7 +137,7 @@ Rebuild after code changes:
 docker compose up -d --build --force-recreate
 ```
 
-> **Note:** `--force-recreate` ensures the scheduler re-runs and reconciles any schedule changes. Without it, Docker may reuse an existing container if the image hash hasn't changed. See [Deployment](deploy.md) for details on code vs state.
+> **Note:** `--force-recreate` ensures the scheduler re-runs and reconciles any schedule changes. Without it, Docker may reuse an existing container if the image hash hasn't changed.
 
 ### Deploying to a remote machine
 
@@ -146,7 +147,7 @@ docker compose up -d --build --force-recreate
 4. Fill in any webhook URLs (`DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`) and other secrets.
 5. Run `docker compose up -d`.
 
-For CI/CD deployment, see [Deployment](deploy.md).
+For CI/CD deployment, see [Deployment](deploy.md) and the reference templates in [`examples/deploy/`](../examples/deploy/).
 
 ## Cinnamon CLI
 

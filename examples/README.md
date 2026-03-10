@@ -7,6 +7,7 @@ Reference implementations and deployment templates. These are **not** part of co
 | Path | Purpose |
 |------|---------|
 | [`deploy/docker/`](deploy/docker/) | Docker Compose override for projects using cinnamon as a submodule |
+| [`deploy/github-actions/`](deploy/github-actions/) | Reference GitHub Actions deploy workflow (SSH-based) |
 | [`deploy/kubernetes/`](deploy/kubernetes/) | Minimal K8s manifests (Deployment, Service, CronJob) -- preview |
 
 ## Spotify integration

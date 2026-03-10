@@ -200,7 +200,7 @@ See `.env.example` for all options.
 - [Writing scripts](docs/writing-scripts.md) -- output contract for shell scripts
 - [Migrations](docs/migrations.md) -- schema namespacing, dual migration pattern
 - [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI
-- [Deployment](docs/deploy.md) -- Docker Compose, CI/CD, remote deployment
+- [Deployment](docs/deploy.md) -- Docker Compose and CI/CD overview
 - [Postgres](docs/postgres.md) -- health checks, SQL shell, queries
 - [Redis](docs/redis.md) -- health checks, debugging
 - [Tests](docs/tests.md) -- test coverage and details

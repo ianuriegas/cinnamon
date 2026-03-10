@@ -1,7 +1,7 @@
 {
   "name": "cinnamon",
   "version": "1.0.0",
-  "description": "Backend-first BullMQ demo with Postgres job logs.",
+  "description": "Job orchestration framework powered by BullMQ, Postgres, and Hono.",
   "main": "src/index.ts",
   "scripts": {
     "clean": "rm -rf node_modules",
@@ -9,6 +9,7 @@
     "db:drop": "bun run scripts/db-drop.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run db/migrate.ts",
+    "cinnamon:migrate": "bun run db/migrate.ts",
     "db:reset-local": "bun run scripts/db-reset-local.ts",
     "format": "biome format --write .",
     "job": "bun run scripts/run-jobs.ts",
@@ -20,7 +21,6 @@
     "trigger": "bun run src/index.ts",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.dashboard.json --noEmit",
     "generate:secret": "openssl rand -base64 32",
-    "auth:spotify": "bun run scripts/spotify-auth.ts",
     "scheduler": "bun run src/scheduler.ts",
     "server": "bun run --watch src/server.ts",
     "worker": "bun run --watch src/worker.ts",

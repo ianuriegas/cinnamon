@@ -1,0 +1,39 @@
+# Docker Compose override for projects using cinnamon as a submodule.
+#
+# Usage:
+#   docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up -d
+#
+# This file extends cinnamon's base services with project-specific config.
+# Cinnamon provides: postgres, redis, migrate, worker, scheduler, api.
+# You add: your own env vars, volumes, extra services, port overrides, etc.
+
+services:
+  # Override the migrate service to also run your app's migrations
+  migrate:
+    command: >
+      sh -c "bun run cinnamon:migrate && echo 'Cinnamon migrations complete'"
+
+  # Add project-specific env vars to the worker
+  worker:
+    env_file:
+      - .env
+    environment:
+      MY_APP_SECRET: ${MY_APP_SECRET:-}
+
+  # Add project-specific env vars to the API server
+  api:
+    env_file:
+      - .env
+    environment:
+      MY_APP_SECRET: ${MY_APP_SECRET:-}
+
+  # Example: add your own service alongside cinnamon
+  # my-app:
+  #   build: .
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy

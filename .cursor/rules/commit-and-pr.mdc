@@ -62,6 +62,16 @@ Rules:
 ## Changes
 <bullet list of what changed and why, grouped by area>
 
+## Deploy notes
+- [ ] **Requires migration** — run `bun run db:migrate` after deploy
+- [ ] **Requires new env vars** — update `.env` (see `.env.example`)
+- [ ] **No special steps needed**
+
+Check exactly one box. If a migration is required, include the migration
+file name(s) and a brief description of schema changes:
+
+> Migration `XXXX_name.sql`: adds `column` to `table`, creates `new_table`
+
 ## Tests
 <actual shell commands to verify, with expected outcomes>
 ```

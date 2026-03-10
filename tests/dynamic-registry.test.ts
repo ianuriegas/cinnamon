@@ -10,8 +10,6 @@ describe("buildRegistry", () => {
 
     assert.ok("shell" in registry, "should have shell native handler");
     assert.ok(!("cinnamon" in registry), "cinnamon is now config-driven");
-    assert.ok(!("spotify-recently-played" in registry), "spotify jobs are now config-driven");
-    assert.ok(!("spotify-top-tracks" in registry), "spotify jobs are now config-driven");
   });
 
   test("adds config-driven jobs alongside native handlers", () => {
@@ -86,7 +84,7 @@ describe("buildRegistry", () => {
           args: ["hello"],
           timeout: "5s",
         },
-        "spotify-recently-played": {
+        "custom-job": {
           command: "echo",
           args: ["test"],
           timeout: "5s",
@@ -96,7 +94,7 @@ describe("buildRegistry", () => {
     const registry = buildRegistry(config);
 
     assert.ok("cinnamon" in registry, "cinnamon registered as config job");
-    assert.ok("spotify-recently-played" in registry, "spotify registered as config job");
+    assert.ok("custom-job" in registry, "custom job registered from config");
     assert.ok("shell" in registry, "shell native handler still present");
   });
 });

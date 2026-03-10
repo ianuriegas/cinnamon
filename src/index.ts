@@ -10,12 +10,7 @@ async function main() {
   if (!jobName) {
     console.error("Usage: bun run trigger <job-name> [payload]");
     console.error("Example: bun run trigger cinnamon 10");
-    console.error(
-      'Example: bun run trigger spotify-recently-played \'{"dryRun":true,"spotifyUserId":"your_user_id"}\'',
-    );
-    console.error(
-      'Example: bun run trigger shell \'{"command":"python3","args":["./jobs/shell/scripts/hello.py"]}\'',
-    );
+    console.error('Example: bun run trigger hello-world \'{"key":"value"}\'');
     await jobsQueue.close();
     process.exit(1);
   }

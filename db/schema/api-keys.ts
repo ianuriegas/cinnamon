@@ -1,7 +1,8 @@
-import { boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { cinnamonSchema } from "./cinnamon-schema.ts";
 import { teams } from "./teams.ts";
 
-export const apiKeys = pgTable("api_keys", {
+export const apiKeys = cinnamonSchema.table("api_keys", {
   id: serial("id").primaryKey(),
   teamId: integer("team_id")
     .notNull()

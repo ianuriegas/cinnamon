@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1770691508204,
-      "tag": "0000_spooky_beast",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1771124338746,
-      "tag": "0001_left_groot",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1772596524813,
-      "tag": "0002_illegal_cerebro",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1772674534153,
-      "tag": "0003_omniscient_sentinels",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1772766155677,
-      "tag": "0004_real_ser_duncan",
+      "when": 1773114711028,
+      "tag": "0000_useful_quicksilver",
       "breakpoints": true
     }
   ]

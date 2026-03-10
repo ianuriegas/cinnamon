@@ -1,0 +1,28 @@
+# CronJob that runs the cinnamon scheduler on a regular interval.
+# The scheduler reconciles cron schedules defined in cinnamon.config.ts
+# and registers them as BullMQ repeatable jobs.
+#
+# TODO: In a full K8s setup, the scheduler would run as a long-lived
+# Deployment instead of a CronJob. This is a simplified preview.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cinnamon-scheduler
+  labels:
+    app: cinnamon
+    component: scheduler
+spec:
+  schedule: "*/5 * * * *"  # every 5 minutes
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: scheduler
+              image: cinnamon:latest  # TODO: replace with your registry image
+              command: ["bun", "run", "scheduler"]
+              envFrom:
+                - secretRef:
+                    name: cinnamon-secrets
+          restartPolicy: OnFailure

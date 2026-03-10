@@ -1,7 +1,8 @@
-import { boolean, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { cinnamonSchema } from "./cinnamon-schema.ts";
 import { teams } from "./teams.ts";
 
-export const jobsLog = pgTable("jobs_log", {
+export const jobsLog = cinnamonSchema.table("jobs_log", {
   id: serial("id").primaryKey(),
   teamId: integer("team_id").references(() => teams.id),
   jobId: text("job_id").notNull().unique(),

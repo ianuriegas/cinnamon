@@ -31,11 +31,6 @@
       "sourceType": "github",
       "computedHash": "60534e1aa880981e26360db836115df77a8e73be219c7a027e635802686b5bd9"
     },
-    "spotify-api": {
-      "source": "fabioc-aloha/spotify-skill",
-      "sourceType": "github",
-      "computedHash": "54f34a7d6811a06f84a4d813a12f9e7448da39255302fafeb9d1c549332fb2f6"
-    },
     "typescript-advanced-types": {
       "source": "wshobson/agents",
       "sourceType": "github",

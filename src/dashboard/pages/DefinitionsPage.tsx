@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { StatusBadge } from "../components/StatusBadge";
 import { TimeAgo } from "../components/TimeAgo";
 import { TriggerButton } from "../components/TriggerButton";
+import { useAuth } from "../hooks/useAuth";
+import { hasPermission } from "../hooks/usePermission";
 import { fetchDefinitions } from "../lib/api";
 import type { DefinitionRow } from "../lib/types";
 
 export function DefinitionsPage() {
+  const { user } = useAuth();
   const [definitions, setDefinitions] = useState<DefinitionRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,7 +62,9 @@ export function DefinitionsPage() {
                         <p className="text-sm text-base-content/60 mt-1">{def.description}</p>
                       )}
                     </div>
-                    <TriggerButton jobName={def.name} />
+                    {hasPermission(user, def.teams, "trigger") && (
+                      <TriggerButton jobName={def.name} />
+                    )}
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">

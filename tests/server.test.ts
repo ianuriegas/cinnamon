@@ -4,7 +4,9 @@ import { after, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db/index.ts";
+import { apiKeyTeams } from "@/db/schema/api-key-teams.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
+import { jobTeams } from "@/db/schema/job-teams.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
 import { app } from "@/src/server.ts";
@@ -24,8 +26,17 @@ function authHeader(key = testPlainKey) {
 describe("API server", () => {
   after(async () => {
     if (testTeamId != null) {
+      const keyRows = await db
+        .select({ apiKeyId: apiKeyTeams.apiKeyId })
+        .from(apiKeyTeams)
+        .where(eq(apiKeyTeams.teamId, testTeamId));
+      const keyIds = keyRows.map((r) => r.apiKeyId);
+      await db.delete(jobTeams).where(eq(jobTeams.teamId, testTeamId));
       await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
-      await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
+      await db.delete(apiKeyTeams).where(eq(apiKeyTeams.teamId, testTeamId));
+      for (const id of keyIds) {
+        await db.delete(apiKeys).where(eq(apiKeys.id, id));
+      }
       await db.delete(teams).where(eq(teams.id, testTeamId));
     }
   });
@@ -36,7 +47,10 @@ describe("API server", () => {
 
     testPlainKey = `cin_${randomBytes(32).toString("hex")}`;
     const keyHash = createHash("sha256").update(testPlainKey).digest("hex");
-    await db.insert(apiKeys).values({ teamId: testTeamId, keyHash, label: "test-server" });
+    const [key] = await db.insert(apiKeys).values({ keyHash, name: "test-server" }).returning();
+    await db.insert(apiKeyTeams).values({ apiKeyId: key.id, teamId: testTeamId });
+
+    await db.insert(jobTeams).values({ jobName: "shell", teamId: testTeamId });
   });
 
   test("GET /health returns 200", async () => {
@@ -67,12 +81,11 @@ describe("API server", () => {
   test("POST /v1/enqueue with revoked key returns 401", async () => {
     const revokedPlain = `cin_${randomBytes(32).toString("hex")}`;
     const revokedHash = createHash("sha256").update(revokedPlain).digest("hex");
-    await db.insert(apiKeys).values({
-      teamId: testTeamId,
-      keyHash: revokedHash,
-      label: "revoked-key",
-      revoked: true,
-    });
+    const [revokedKey] = await db
+      .insert(apiKeys)
+      .values({ keyHash: revokedHash, name: "revoked-key", revoked: true })
+      .returning();
+    await db.insert(apiKeyTeams).values({ apiKeyId: revokedKey.id, teamId: testTeamId });
 
     const res = await req("/v1/enqueue", {
       method: "POST",

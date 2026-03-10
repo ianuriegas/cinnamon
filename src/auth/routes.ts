@@ -1,7 +1,12 @@
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
-import { isEmailAllowed } from "@/config/env.ts";
+import { getEnv, isEmailAllowed, isSuperAdminEmail } from "@/config/env.ts";
+import { db } from "@/db/index.ts";
+import { teams } from "@/db/schema/teams.ts";
+import { userTeams } from "@/db/schema/user-teams.ts";
+import { users } from "@/db/schema/users.ts";
 import {
   createSessionJwt,
   exchangeCodeForTokens,
@@ -120,16 +125,47 @@ export function createAuthRoutes() {
       const redirectUri = getRedirectUriFromRequest(c);
       const tokens = await exchangeCodeForTokens(code, storedVerifier, redirectUri);
 
-      if (tokens.id_token) {
-        const claims = await verifyGoogleIdToken(tokens.id_token);
-        if (!isEmailAllowed(claims.email)) {
-          deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
-          deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
-          return c.redirect("/auth/login?error=access_denied");
-        }
+      if (!tokens.id_token) {
+        return c.redirect("/auth/login?error=authentication_failed");
       }
 
-      const jwt = await createSessionJwt(tokens);
+      const claims = await verifyGoogleIdToken(tokens.id_token);
+      if (!isEmailAllowed(claims.email)) {
+        deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
+        deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
+        return c.redirect("/auth/login?error=access_denied");
+      }
+
+      const superAdmin = isSuperAdminEmail(claims.email);
+      const [user] = await db
+        .insert(users)
+        .values({
+          email: claims.email,
+          name: claims.name,
+          picture: claims.picture,
+          provider: "google",
+          providerSub: claims.sub,
+          isSuperAdmin: superAdmin,
+        })
+        .onConflictDoUpdate({
+          target: users.email,
+          set: {
+            name: claims.name,
+            picture: claims.picture,
+            providerSub: claims.sub,
+            isSuperAdmin: superAdmin,
+          },
+        })
+        .returning({ id: users.id });
+
+      const jwt = await createSessionJwt({
+        sub: claims.sub,
+        email: claims.email,
+        name: claims.name,
+        picture: claims.picture,
+        userId: user.id,
+        isSuperAdmin: superAdmin,
+      });
       const secure = shouldUseSecureCookies();
       const sessionMaxAge = 60 * 60 * 24 * 7;
 
@@ -144,7 +180,8 @@ export function createAuthRoutes() {
       deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
       deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
 
-      return c.redirect("/dashboard");
+      const { baseUrl } = getEnv();
+      return c.redirect(`${baseUrl.replace(/\/$/, "")}/dashboard`);
     } catch (err) {
       console.error("OAuth callback error:", err);
       return c.redirect("/auth/login?error=authentication_failed");
@@ -164,9 +201,17 @@ export function createAuthRoutes() {
     const session = await verifySession(token);
     if (!session) return c.json({ authenticated: false }, 401);
 
+    const userTeamRows = await db
+      .select({ teamId: teams.id, teamName: teams.name, role: userTeams.role })
+      .from(userTeams)
+      .innerJoin(teams, eq(userTeams.teamId, teams.id))
+      .where(eq(userTeams.userId, session.userId));
+
     return c.json({
       authenticated: true,
       user: { email: session.email, name: session.name, picture: session.picture },
+      isSuperAdmin: session.isSuperAdmin,
+      teams: userTeamRows.map((r) => ({ teamId: r.teamId, name: r.teamName, role: r.role })),
     });
   });
 

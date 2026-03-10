@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { db, pool } from "@/db/index.ts";
+import { apiKeyTeams } from "@/db/schema/api-key-teams.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { teams } from "@/db/schema/teams.ts";
 
@@ -30,14 +31,15 @@ async function seedTeam(teamName: string, label?: string) {
 
   const plainKey = `cin_${randomBytes(32).toString("hex")}`;
   const keyHash = hashKey(plainKey);
-  const keyLabel = label ?? teamName.toLowerCase().replace(/\s+/g, "-");
+  const keyName = label ?? teamName.toLowerCase().replace(/\s+/g, "-");
 
-  await db.insert(apiKeys).values({ teamId, keyHash, label: keyLabel });
+  const [inserted] = await db.insert(apiKeys).values({ keyHash, name: keyName }).returning();
+  await db.insert(apiKeyTeams).values({ apiKeyId: inserted.id, teamId });
 
   console.log("\n--- Save this key, it will not be shown again ---");
   console.log(`API Key: ${plainKey}`);
   console.log(`Team:    ${teamName} (id=${teamId})`);
-  console.log(`Label:   ${keyLabel}`);
+  console.log(`Name:    ${keyName}`);
   console.log("--------------------------------------------------\n");
 }
 

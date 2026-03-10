@@ -14,6 +14,7 @@ export default defineConfig({
         // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
         on_success: [{ url: "${DISCORD_WEBHOOK_URL}" }],
       },
+      teams: ["hello-world"],
     },
 
     "slow-job": {
@@ -21,6 +22,7 @@ export default defineConfig({
       script: "./jobs/shell/scripts/slow.py",
       timeout: "60s",
       description: "Long-running job for testing cancel and live streaming",
+      teams: ["hello-world"],
     },
 
     cinnamon: {

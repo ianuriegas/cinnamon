@@ -4,7 +4,9 @@ import { after, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db/index.ts";
+import { apiKeyTeams } from "@/db/schema/api-key-teams.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
+import { jobTeams } from "@/db/schema/job-teams.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
 import { jobsQueue } from "@/src/queue.ts";
@@ -27,16 +29,22 @@ function authHeader(key = testPlainKey) {
 
 describe("Jobs Observability API", () => {
   after(async () => {
-    if (testTeamId != null) {
-      await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
-      await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
-      await db.delete(teams).where(eq(teams.id, testTeamId));
-    }
-    if (otherTeamId != null && otherTeamId !== testTeamId) {
-      await db.delete(jobsLog).where(eq(jobsLog.teamId, otherTeamId));
-      await db.delete(apiKeys).where(eq(apiKeys.teamId, otherTeamId));
-      await db.delete(teams).where(eq(teams.id, otherTeamId));
-    }
+    const cleanupTeam = async (teamId: number) => {
+      const keyRows = await db
+        .select({ apiKeyId: apiKeyTeams.apiKeyId })
+        .from(apiKeyTeams)
+        .where(eq(apiKeyTeams.teamId, teamId));
+      const keyIds = keyRows.map((r) => r.apiKeyId);
+      await db.delete(jobTeams).where(eq(jobTeams.teamId, teamId));
+      await db.delete(jobsLog).where(eq(jobsLog.teamId, teamId));
+      await db.delete(apiKeyTeams).where(eq(apiKeyTeams.teamId, teamId));
+      for (const id of keyIds) {
+        await db.delete(apiKeys).where(eq(apiKeys.id, id));
+      }
+      await db.delete(teams).where(eq(teams.id, teamId));
+    };
+    if (testTeamId != null) await cleanupTeam(testTeamId);
+    if (otherTeamId != null && otherTeamId !== testTeamId) await cleanupTeam(otherTeamId);
     await jobsQueue.obliterate({ force: true }).catch(() => {});
     await jobsQueue.close();
   });
@@ -50,7 +58,13 @@ describe("Jobs Observability API", () => {
 
     testPlainKey = `cin_${randomBytes(32).toString("hex")}`;
     const keyHash = createHash("sha256").update(testPlainKey).digest("hex");
-    await db.insert(apiKeys).values({ teamId: testTeamId, keyHash, label: "test-jobs-api" });
+    const [key] = await db.insert(apiKeys).values({ keyHash, name: "test-jobs-api" }).returning();
+    await db.insert(apiKeyTeams).values({ apiKeyId: key.id, teamId: testTeamId });
+
+    await db.insert(jobTeams).values([
+      { jobName: "shell", teamId: testTeamId },
+      { jobName: "hello-world", teamId: testTeamId },
+    ]);
 
     const rows = await db
       .insert(jobsLog)

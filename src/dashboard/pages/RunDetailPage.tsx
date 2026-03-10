@@ -4,10 +4,12 @@ import { CopyButton } from "../components/CopyButton";
 import { Duration } from "../components/Duration";
 import { StatusBadge } from "../components/StatusBadge";
 import { useTimezoneContext } from "../contexts/TimezoneContext";
+import { useAuth } from "../hooks/useAuth";
 import { type LogLine, useLogStream } from "../hooks/useLogStream";
+import { hasPermission } from "../hooks/usePermission";
 import { usePolling } from "../hooks/usePolling";
 import { formatInTimezone } from "../hooks/useTimezone";
-import { cancelRun, fetchRun } from "../lib/api";
+import { cancelRun, fetchDefinitions, fetchRun } from "../lib/api";
 import type { RunRow } from "../lib/types";
 import { formatJson, isShellResult } from "../lib/types";
 
@@ -145,16 +147,19 @@ function CancelButton({ jobId, onCancelled }: { jobId: string; onCancelled: () =
 }
 
 export function RunDetailPage() {
+  const { user } = useAuth();
   const { timezone } = useTimezoneContext();
   const { id } = useParams<{ id: string }>();
   const [run, setRun] = useState<RunRow | null>(null);
+  const [definitions, setDefinitions] = useState<Array<{ name: string; teams?: string[] }>>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      const res = await fetchRun(id);
-      setRun(res.data);
+      const [runRes, defRes] = await Promise.all([fetchRun(id), fetchDefinitions()]);
+      setRun(runRes.data);
+      setDefinitions(defRes.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load run");
     }
@@ -165,6 +170,12 @@ export function RunDetailPage() {
   }, [load]);
 
   const isActive = run?.status === "processing" || run?.status === "queued";
+  const jobDef = run ? definitions.find((d) => d.name === run.jobName) : null;
+  const canCancelFromJobTeams = run && hasPermission(user, jobDef?.teams, "cancel");
+  const canCancelFromRunTeam =
+    run?.teamId != null &&
+    user?.teams?.some((t) => t.teamId === run.teamId && ["member", "admin"].includes(t.role));
+  const canCancel = run && (canCancelFromJobTeams || canCancelFromRunTeam);
   usePolling(load, 2000, isActive);
 
   const isProcessing = run?.status === "processing";
@@ -218,7 +229,7 @@ export function RunDetailPage() {
           </span>
         )}
         {isActive && <span className="loading loading-spinner loading-xs text-warning" />}
-        {isActive && <CancelButton jobId={run.jobId} onCancelled={load} />}
+        {isActive && canCancel && <CancelButton jobId={run.jobId} onCancelled={load} />}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

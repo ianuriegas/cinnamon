@@ -133,6 +133,15 @@ function validateJobDefinition(name: string, def: unknown): JobDefinition {
     }
   }
 
+  if (d.teams !== undefined) {
+    if (
+      !Array.isArray(d.teams) ||
+      !d.teams.every((t: unknown) => typeof t === "string" && (t as string).trim() !== "")
+    ) {
+      throw new Error(`Job "${name}": "teams" must be an array of non-empty strings`);
+    }
+  }
+
   return d as unknown as JobDefinition;
 }
 

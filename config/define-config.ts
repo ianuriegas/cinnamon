@@ -22,6 +22,8 @@ export interface JobDefinition {
   /** Cron expression for scheduled execution. */
   schedule?: string;
   notifications?: NotificationConfig;
+  /** Teams for RBAC scoping (e.g. ["itops", "finance"]). */
+  teams?: string[];
 }
 
 export interface CinnamonConfig {

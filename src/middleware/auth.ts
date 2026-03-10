@@ -3,7 +3,7 @@ import { verifyApiKey } from "@/src/auth.ts";
 
 type AuthEnv = {
   Variables: {
-    teamId: number;
+    teamIds: number[];
   };
 };
 
@@ -17,10 +17,10 @@ export async function authMiddleware(c: Context<AuthEnv>, next: Next) {
   const plainKey = header.slice("Bearer ".length);
   const result = await verifyApiKey(plainKey);
 
-  if (!result) {
+  if (!result || result.teamIds.length === 0) {
     return c.json({ error: "Invalid or revoked API key" }, 401);
   }
 
-  c.set("teamId", result.teamId);
+  c.set("teamIds", result.teamIds);
   return next();
 }

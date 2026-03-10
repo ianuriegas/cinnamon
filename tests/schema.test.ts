@@ -4,6 +4,7 @@ import { after, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db/index.ts";
+import { apiKeyTeams } from "@/db/schema/api-key-teams.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
@@ -11,11 +12,13 @@ import { teams } from "@/db/schema/teams.ts";
 const TEST_TEAM_NAME = `__test_team_${Date.now()}`;
 
 let testTeamId: number;
+let testKeyId: number;
 
 describe("Phase 2 schema", () => {
   after(async () => {
     await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
-    await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
+    await db.delete(apiKeyTeams).where(eq(apiKeyTeams.teamId, testTeamId));
+    if (testKeyId != null) await db.delete(apiKeys).where(eq(apiKeys.id, testKeyId));
     await db.delete(teams).where(eq(teams.id, testTeamId));
   });
 
@@ -29,27 +32,26 @@ describe("Phase 2 schema", () => {
     assert.ok(inserted.createdAt instanceof Date);
   });
 
-  test("can insert an api_key with valid team_id", async () => {
+  test("can insert an api_key with teams", async () => {
     const keyHash = createHash("sha256").update(randomBytes(32)).digest("hex");
 
-    const [inserted] = await db
-      .insert(apiKeys)
-      .values({ teamId: testTeamId, keyHash, label: "test-key" })
-      .returning();
+    const [key] = await db.insert(apiKeys).values({ keyHash, name: "test-key" }).returning();
+    testKeyId = key.id;
+    assert.ok(key.id > 0);
+    assert.equal(key.keyHash, keyHash);
+    assert.equal(key.name, "test-key");
+    assert.equal(key.revoked, false);
 
-    assert.ok(inserted.id > 0);
-    assert.equal(inserted.teamId, testTeamId);
-    assert.equal(inserted.keyHash, keyHash);
-    assert.equal(inserted.label, "test-key");
-    assert.equal(inserted.revoked, false);
+    await db.insert(apiKeyTeams).values({ apiKeyId: key.id, teamId: testTeamId });
   });
 
-  test("api_key FK rejects nonexistent team_id", async () => {
+  test("api_key_teams FK rejects nonexistent team_id", async () => {
     const keyHash = createHash("sha256").update(randomBytes(32)).digest("hex");
+    const [key] = await db.insert(apiKeys).values({ keyHash, name: "bad" }).returning();
 
-    await assert.rejects(() =>
-      db.insert(apiKeys).values({ teamId: 999999, keyHash, label: "bad-fk" }),
-    );
+    await assert.rejects(() => db.insert(apiKeyTeams).values({ apiKeyId: key.id, teamId: 999999 }));
+
+    await db.delete(apiKeys).where(eq(apiKeys.id, key.id));
   });
 
   test("can insert a jobs_log entry with team_id", async () => {

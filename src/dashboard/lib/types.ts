@@ -3,6 +3,7 @@ export interface RunRow {
   jobId: string;
   jobName: string;
   queueName: string;
+  teamId: number | null;
   status: string;
   error: boolean;
   payload: unknown;
@@ -33,6 +34,7 @@ export interface DefinitionRow {
   timeout?: string;
   retries?: number;
   description?: string;
+  teams?: string[];
   lastRun?: {
     status: string;
     createdAt: string;
@@ -61,6 +63,36 @@ export function isShellResult(value: unknown): value is ShellResult {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const v = value as Record<string, unknown>;
   return "stdout" in v || "stderr" in v || "exitCode" in v;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  picture: string | null;
+  isSuperAdmin: boolean;
+  createdAt: string;
+  teams: Array<{ teamId: number; name: string; role: string }>;
+}
+
+export interface AdminTeam {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
+export interface AdminApiKeyTeam {
+  id: number;
+  name: string;
+}
+
+export interface AdminApiKey {
+  id: number;
+  teams: AdminApiKeyTeam[];
+  name: string | null;
+  revoked: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
 }
 
 export function formatJson(value: unknown): string {

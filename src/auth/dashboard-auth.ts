@@ -22,6 +22,8 @@ export interface SessionPayload {
   email: string;
   name: string;
   picture: string;
+  userId: number;
+  isSuperAdmin: boolean;
 }
 
 function requireAuthEnv() {
@@ -118,7 +120,14 @@ export async function exchangeCodeForTokens(
 // Session helpers
 // ---------------------------------------------------------------------------
 
-export async function verifyGoogleIdToken(idToken: string): Promise<SessionPayload> {
+export interface GoogleIdTokenClaims {
+  sub: string;
+  email: string;
+  name: string;
+  picture: string;
+}
+
+export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenClaims> {
   const { googleClientId } = requireAuthEnv();
   const { payload } = await jwtVerify(idToken, googleJwks, {
     issuer: GOOGLE_ISSUER,
@@ -133,16 +142,28 @@ export async function verifyGoogleIdToken(idToken: string): Promise<SessionPaylo
   };
 }
 
-export async function createSessionJwt(tokens: TokenResponse): Promise<string> {
-  const { sessionSecret } = requireAuthEnv();
-  if (!tokens.id_token) throw new Error("No id_token in token response");
+export interface CreateSessionOptions {
+  sub: string;
+  email: string;
+  name: string;
+  picture: string;
+  userId: number;
+  isSuperAdmin: boolean;
+}
 
-  const claims = await verifyGoogleIdToken(tokens.id_token);
+export async function createSessionJwt(opts: CreateSessionOptions): Promise<string> {
+  const { sessionSecret } = requireAuthEnv();
   const secret = new TextEncoder().encode(sessionSecret);
 
-  return new SignJWT({ email: claims.email, name: claims.name, picture: claims.picture })
+  return new SignJWT({
+    email: opts.email,
+    name: opts.name,
+    picture: opts.picture,
+    userId: opts.userId,
+    isSuperAdmin: opts.isSuperAdmin,
+  })
     .setProtectedHeader({ alg: "HS256" })
-    .setSubject(claims.sub)
+    .setSubject(opts.sub)
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE}s`)
     .sign(secret);
@@ -160,6 +181,8 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
       email: (payload.email as string) ?? "",
       name: (payload.name as string) ?? "",
       picture: (payload.picture as string) ?? "",
+      userId: (payload.userId as number) ?? 0,
+      isSuperAdmin: (payload.isSuperAdmin as boolean) ?? false,
     };
   } catch {
     return null;

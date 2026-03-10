@@ -62,7 +62,16 @@ function loadEnv() {
     baseUrl: process.env.BASE_URL ?? `http://localhost:${Number(process.env.PORT) || DEFAULT_PORT}`,
     sessionSecret: process.env.SESSION_SECRET,
     allowedEmails: parseAllowedEmails(process.env.ALLOWED_EMAILS),
+    appSuperAdmins: parseSuperAdmins(process.env.APP_SUPER_ADMINS),
   };
+}
+
+function parseSuperAdmins(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function parseAllowedEmails(raw: string | undefined): string[] {
@@ -76,6 +85,11 @@ function parseAllowedEmails(raw: string | undefined): string[] {
 export function isDashboardAuthEnabled(): boolean {
   const env = getEnv();
   return Boolean(env.googleClientId && env.sessionSecret);
+}
+
+export function isSuperAdminEmail(email: string): boolean {
+  const { appSuperAdmins } = getEnv();
+  return appSuperAdmins.includes(email.toLowerCase());
 }
 
 export function isEmailAllowed(email: string): boolean {

@@ -48,6 +48,7 @@ export default defineConfig({
           });
         },
       },
+      "/api/admin": "http://localhost:3000",
       "/auth": "http://localhost:3000",
       "/v1": "http://localhost:3000",
       "/health": "http://localhost:3000",

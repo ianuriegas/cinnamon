@@ -1,10 +1,11 @@
 import type { Queue } from "bullmq";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 
 import type { CinnamonConfig } from "@/config/define-config.ts";
 import { getJobOptions } from "@/config/dynamic-registry.ts";
 import { db } from "@/db/index.ts";
+import { jobTeams } from "@/db/schema/job-teams.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import type { JobHandler } from "@/src/job-types.ts";
 
@@ -14,7 +15,7 @@ const TRUNCATE_LENGTH = 200;
 
 type AppEnv = {
   Variables: {
-    teamId: number;
+    teamIds: number[];
   };
 };
 
@@ -63,14 +64,14 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
 
   router.get("/:id", async (c) => {
     const idParam = c.req.param("id");
-    const teamId = c.get("teamId");
+    const teamIds = c.get("teamIds");
 
     const numericId = Number(idParam);
     const isNumeric = Number.isInteger(numericId) && numericId > 0;
 
     const condition = isNumeric
-      ? and(eq(jobsLog.id, numericId), eq(jobsLog.teamId, teamId))
-      : and(eq(jobsLog.jobId, idParam), eq(jobsLog.teamId, teamId));
+      ? and(eq(jobsLog.id, numericId), inArray(jobsLog.teamId, teamIds))
+      : and(eq(jobsLog.jobId, idParam), inArray(jobsLog.teamId, teamIds));
 
     const [row] = await db.select().from(jobsLog).where(condition).limit(1);
 
@@ -82,14 +83,14 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
   });
 
   router.get("/", async (c) => {
-    const teamId = c.get("teamId");
+    const teamIds = c.get("teamIds");
     const limitParam = Math.min(Number(c.req.query("limit")) || DEFAULT_LIMIT, MAX_LIMIT);
     const offsetParam = Math.max(Number(c.req.query("offset")) || 0, 0);
     const nameFilter = c.req.query("name");
     const statusFilter = c.req.query("status");
     const sinceFilter = c.req.query("since");
 
-    const conditions = [eq(jobsLog.teamId, teamId)];
+    const conditions = [inArray(jobsLog.teamId, teamIds)];
 
     if (nameFilter) {
       conditions.push(eq(jobsLog.jobName, nameFilter));
@@ -140,6 +141,24 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
       return c.json({ error: `Unknown job: ${name}` }, 400);
     }
 
+    const teamIds = c.get("teamIds");
+    const allowedTeams = await db
+      .select({ teamId: jobTeams.teamId })
+      .from(jobTeams)
+      .where(eq(jobTeams.jobName, name));
+    const allowedTeamIds = new Set(allowedTeams.map((r) => r.teamId));
+
+    if (allowedTeamIds.size === 0) {
+      return c.json(
+        { error: "Job is not assigned to any team; only super-admins can trigger it" },
+        403,
+      );
+    }
+    const matchedTeamId = teamIds.find((id) => allowedTeamIds.has(id));
+    if (matchedTeamId == null) {
+      return c.json({ error: "Your team does not have permission to trigger this job" }, 403);
+    }
+
     let data: Record<string, unknown> = {};
     try {
       const body = await c.req.json();
@@ -150,8 +169,7 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
       // No body or invalid JSON is fine — trigger with empty data
     }
 
-    const teamId = c.get("teamId");
-    const jobData = { ...data, teamId };
+    const jobData = { ...data, teamId: matchedTeamId };
     const opts = getJobOptions(name, config);
 
     try {

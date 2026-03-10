@@ -13,11 +13,9 @@ const jobsDir = path.join(rootDir, "jobs");
 
 type JobEntry = {
   label: string;
-  /** Relative path from jobs/ to the entrypoint (e.g. "cinnamon/index.ts" or "spotify/recently-played/index.ts") */
+  /** Relative path from jobs/ to the entrypoint (e.g. "cinnamon/index.ts") */
   entrypoint: string;
 };
-
-const DRY_RUN_SUPPORTED_JOBS = new Set(["spotify/recently-played", "spotify/top-tracks"]);
 
 function isDryRunFlag(arg: string): boolean {
   return arg === "--dry" || arg === "--dry-run" || arg === "-d";
@@ -102,25 +100,11 @@ function resolveJobFromArg(jobs: JobEntry[], arg: string): JobEntry | null {
   );
 }
 
-function withDryRunArgs(job: JobEntry, forwardedArgs: string[], dryRun: boolean): string[] {
-  if (!dryRun) {
-    return forwardedArgs;
-  }
-
-  if (!DRY_RUN_SUPPORTED_JOBS.has(job.label)) {
-    log.warn(`'${job.label}' does not define a dry-run mode. Running normally.`);
-    return forwardedArgs;
-  }
-
-  if (forwardedArgs.some((arg) => isDryRunFlag(arg))) {
-    return forwardedArgs;
-  }
-
-  return [...forwardedArgs, "--dry"];
-}
-
 async function runSelectedJob(job: JobEntry, forwardedArgs: string[], dryRun: boolean) {
-  const effectiveArgs = withDryRunArgs(job, forwardedArgs, dryRun);
+  const effectiveArgs =
+    dryRun && !forwardedArgs.some((a) => isDryRunFlag(a))
+      ? [...forwardedArgs, "--dry-run"]
+      : forwardedArgs;
   const child = spawn("bun", ["run", `jobs/${job.entrypoint}`, ...effectiveArgs], {
     cwd: rootDir,
     stdio: "inherit",

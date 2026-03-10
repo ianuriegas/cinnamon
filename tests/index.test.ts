@@ -13,9 +13,9 @@ describe("parsePayloadArg", () => {
 
   test("parses valid JSON objects", () => {
     assert.deepEqual(parsePayloadArg('{"dryRun":true}'), { dryRun: true });
-    assert.deepEqual(parsePayloadArg('{"spotifyUserId":"abc","afterMs":100}'), {
-      spotifyUserId: "abc",
-      afterMs: 100,
+    assert.deepEqual(parsePayloadArg('{"key":"value","count":100}'), {
+      key: "value",
+      count: 100,
     });
   });
 

@@ -13,7 +13,6 @@ Uses Bun's built-in test runner. Run with `bun test`.
 | `jobs/cinnamon/`              | Start value parsing (`parseStart`)                            |
 | `jobs/shell/`                 | Shell job execution, timeout, error handling (`runShellJob`)  |
 | `jobs/_shared/`               | Direct execution detection (`isDirectExecution`)              |
-| `jobs/spotify/recently-played`| `afterMs` cursor validation (`toValidAfterMs`)                |
 | `db/schema/`                  | Multi-tenant schema (teams, api_keys, jobs_log with team_id)  |
 | `src/server.ts`               | API server endpoints (health, auth, enqueue validation)       |
 | `src/routes/jobs.ts`          | Jobs observability API (list, detail, definitions, schedules, trigger) |
@@ -36,7 +35,7 @@ Uses Bun's built-in test runner. Run with `bun test`.
 - Config-driven handler calls shell with correct payload
 - Config-driven handler prepends script to args
 - Throws on name collision with shell native handler
-- Allows config-driven jobs with previously native names (cinnamon, spotify)
+- Allows config-driven jobs with previously native names (cinnamon)
 
 ### Scheduler tests (`tests/scheduler.test.ts`)
 

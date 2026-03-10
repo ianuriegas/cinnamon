@@ -1,7 +1,7 @@
 # Project Structure
 
 ```
-cinnamon.config.ts  Job definitions (all jobs: shell, spotify, demo)
+cinnamon.config.ts  Job definitions (shell demo jobs)
 config/
   define-config.ts    JobDefinition and CinnamonConfig types
   dynamic-registry.ts Builds the handler registry from native + config jobs
@@ -11,20 +11,15 @@ config/
   load-config.ts      Config loader with validation
 db/
   connection.ts       Shared Postgres pool
-  schema/             Drizzle table definitions (jobs_log, teams, api_keys, spotify)
+  schema/             Drizzle table definitions (jobs_log, teams, api_keys)
   migrations/         Generated SQL migrations
 jobs/
   _shared/            Shared utilities (isDirectExecution)
   cinnamon/           Countdown demo job (config-driven)
   shell/              Shell/process executor (run any command/script)
     scripts/          Example scripts (hello.py, example-json.py, slow.py)
-  spotify/            Spotify job group (config-driven)
-    auth.ts             Shared auth (token refresh, profile lookup)
-    api.ts              Shared API client (fetchRecentlyPlayed, fetchTopTracks)
-    types.ts            Shared Spotify types
-    recently-played/    Ingest recently played tracks
-    top-tracks/         Snapshot top tracks by time range
   native-handlers.ts  Shell executor registration (framework internal)
+examples/             Reference implementations (not part of core)
 cli/
   index.ts            CLI entrypoint (arg parsing, command dispatch)
   config.ts           Load ~/.cinnamon/config.json + env var / flag overrides
@@ -97,7 +92,6 @@ docs/                 Documentation
 | `bun run job:dry`                    | Interactive menu; requests dry-run mode             |
 | `bun run scripts/seed-team.ts [name] [label]` | Create a team and API key (default: "Default Team") |
 | `bun run generate:secret`            | Generate a random `SESSION_SECRET` for dashboard auth |
-| `bun run auth:spotify`               | Obtain a Spotify refresh token interactively       |
 | `bun run db:migrate`                 | Apply pending Drizzle migrations                   |
 | `bun run db:generate`                | Generate a migration from schema changes           |
 | `bun run db:drop`                    | Interactively drop the latest migration            |
@@ -145,7 +139,7 @@ docker compose up -d --build --force-recreate
 1. Install Docker and Docker Compose on the target machine.
 2. Clone the repo and create `.env` from `.env.example`.
 3. No changes needed for `DATABASE_URL` or `REDIS_URL` -- `docker-compose.yml` overrides them to use internal container hostnames (`postgres`, `redis`).
-4. Fill in `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`, and any webhook URLs (`DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`).
+4. Fill in any webhook URLs (`DISCORD_WEBHOOK_URL`, `SLACK_WEBHOOK_URL`) and other secrets.
 5. Run `docker compose up -d`.
 
 For CI/CD deployment, see [Deployment](deploy.md).

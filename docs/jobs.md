@@ -124,21 +124,6 @@ Scripts can return structured results by printing a JSON object on the last line
 
 See [Writing scripts](writing-scripts.md) for the full output contract and examples.
 
-## Spotify jobs
-
-Spotify jobs are config-driven like all other jobs. They run as `bun` subprocesses that connect to Postgres and the Spotify API, returning structured results via `parseJsonOutput`.
-
-| Job                        | Schedule        | Script                                    |
-| -------------------------- | --------------- | ----------------------------------------- |
-| `spotify-recently-played`  | Every hour      | `jobs/spotify/recently-played/index.ts`   |
-| `spotify-top-tracks`       | Daily (00:00)   | `jobs/spotify/top-tracks/index.ts`        |
-
-```bash
-bun run trigger spotify-recently-played '{"dryRun":true}'
-```
-
-See [Spotify OAuth](spotify-auth.md) for auth setup and [Spotify ingestion](spotify-recently-played.md) for detailed job docs.
-
 ## Scheduling
 
 Jobs with a `schedule` field in `cinnamon.config.ts` are automatically registered as BullMQ repeatable jobs when the scheduler runs.

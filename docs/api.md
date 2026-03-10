@@ -222,7 +222,7 @@ List active BullMQ job schedulers with their cron pattern and next run time.
 {
   "data": [
     {
-      "name": "spotify-recently-played",
+      "name": "hello-world",
       "pattern": "0 * * * *",
       "next": "2025-03-06T01:00:00.000Z"
     }

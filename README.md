@@ -116,12 +116,11 @@ See `.env.example` for all options.
 ## Docs
 
 - [API reference](docs/api.md) -- all endpoints, query params, and curl examples
-- [Jobs and config](docs/jobs.md) -- shell jobs, `cinnamon.config.ts`, Spotify jobs
+- [Jobs and config](docs/jobs.md) -- shell jobs, `cinnamon.config.ts`
 - [Writing scripts](docs/writing-scripts.md) -- output contract for shell job scripts
 - [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI setup, Docker deployment
 - [Tests](docs/tests.md) -- test coverage and details
 - [Deployment](docs/deploy.md) -- CI/CD and remote deployment
 - [Postgres](docs/postgres.md) -- health checks, SQL shell, useful queries
 - [Redis](docs/redis.md) -- health checks, debugging
-- [Spotify OAuth](docs/spotify-auth.md) -- refresh token setup
-- [Spotify ingestion](docs/spotify-recently-played.md) -- recently played job details
+- [Examples](examples/) -- reference implementations (e.g. Spotify integration)

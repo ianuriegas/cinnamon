@@ -20,7 +20,6 @@
     "trigger": "bun run src/index.ts",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.dashboard.json --noEmit",
     "generate:secret": "openssl rand -base64 32",
-    "auth:spotify": "bun run scripts/spotify-auth.ts",
     "scheduler": "bun run src/scheduler.ts",
     "server": "bun run --watch src/server.ts",
     "worker": "bun run --watch src/worker.ts",

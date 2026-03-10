@@ -17,7 +17,7 @@ There are two layers of configuration, and they intentionally overlap:
 
 ### Layer 1: `.env` file (app secrets)
 
-The `.env` file on the target MacBook holds all secrets and app-level config (Spotify keys, webhook URLs, Postgres credentials). It is loaded into every app service via `env_file: .env` in `docker-compose.yml`. The `DATABASE_URL` and `REDIS_URL` values in `.env` point at `localhost` for local development outside Docker.
+The `.env` file on the target machine holds all secrets and app-level config (webhook URLs, Postgres credentials, OAuth secrets). It is loaded into every app service via `env_file: .env` in `docker-compose.yml`. The `DATABASE_URL` and `REDIS_URL` values in `.env` point at `localhost` for local development outside Docker.
 
 ### Layer 2: `docker-compose.yml` environment overrides (infra URLs)
 

@@ -22,6 +22,17 @@ interface JobsRouterDeps {
   jobsQueue: Queue;
   jobHandlers: Record<string, JobHandler>;
   config: CinnamonConfig;
+  jobTeamIds: Map<string, number[]>;
+}
+
+function isJobVisibleToTeam(
+  jobName: string,
+  teamId: number,
+  jobTeamIds: Map<string, number[]>,
+): boolean {
+  const allowedTeams = jobTeamIds.get(jobName);
+  if (!allowedTeams) return true;
+  return allowedTeams.includes(teamId);
 }
 
 function truncateJson(value: unknown): unknown {
@@ -31,30 +42,36 @@ function truncateJson(value: unknown): unknown {
   return `${str.slice(0, TRUNCATE_LENGTH)}...`;
 }
 
-export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterDeps) {
+export function createJobsRouter({ jobsQueue, jobHandlers, config, jobTeamIds }: JobsRouterDeps) {
   const router = new Hono<AppEnv>();
 
   router.get("/definitions", async (c) => {
-    const definitions = Object.entries(config.jobs).map(([name, def]) => ({
-      name,
-      command: def.command,
-      script: def.script,
-      schedule: def.schedule,
-      timeout: def.timeout,
-      retries: def.retries,
-      description: def.description,
-    }));
+    const teamId = c.get("teamId");
+    const definitions = Object.entries(config.jobs)
+      .filter(([name]) => isJobVisibleToTeam(name, teamId, jobTeamIds))
+      .map(([name, def]) => ({
+        name,
+        command: def.command,
+        script: def.script,
+        schedule: def.schedule,
+        timeout: def.timeout,
+        retries: def.retries,
+        description: def.description,
+      }));
     return c.json({ data: definitions });
   });
 
   router.get("/schedules", async (c) => {
+    const teamId = c.get("teamId");
     try {
       const schedulers = await jobsQueue.getJobSchedulers(0, -1);
-      const data = schedulers.map((s) => ({
-        name: s.name,
-        pattern: s.pattern,
-        next: s.next ? new Date(s.next).toISOString() : null,
-      }));
+      const data = schedulers
+        .filter((s) => isJobVisibleToTeam(s.name, teamId, jobTeamIds))
+        .map((s) => ({
+          name: s.name,
+          pattern: s.pattern,
+          next: s.next ? new Date(s.next).toISOString() : null,
+        }));
       return c.json({ data });
     } catch {
       return c.json({ error: "Failed to fetch job schedules" }, 503);
@@ -78,6 +95,10 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
       return c.json({ error: "Job not found" }, 404);
     }
 
+    if (!isJobVisibleToTeam(row.jobName, teamId, jobTeamIds)) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+
     return c.json({ data: row });
   });
 
@@ -92,6 +113,12 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
     const conditions = [eq(jobsLog.teamId, teamId)];
 
     if (nameFilter) {
+      if (!isJobVisibleToTeam(nameFilter, teamId, jobTeamIds)) {
+        return c.json({
+          data: [],
+          pagination: { limit: limitParam, offset: offsetParam, total: 0 },
+        });
+      }
       conditions.push(eq(jobsLog.jobName, nameFilter));
     }
     if (statusFilter) {
@@ -117,11 +144,13 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
       db.select({ total: count() }).from(jobsLog).where(where),
     ]);
 
-    const data = rows.map((row) => ({
-      ...row,
-      payload: truncateJson(row.payload),
-      result: truncateJson(row.result),
-    }));
+    const data = rows
+      .filter((row) => isJobVisibleToTeam(row.jobName, teamId, jobTeamIds))
+      .map((row) => ({
+        ...row,
+        payload: truncateJson(row.payload),
+        result: truncateJson(row.result),
+      }));
 
     return c.json({
       data,
@@ -140,6 +169,11 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
       return c.json({ error: `Unknown job: ${name}` }, 400);
     }
 
+    const teamId = c.get("teamId");
+    if (!isJobVisibleToTeam(name, teamId, jobTeamIds)) {
+      return c.json({ error: `Unknown job: ${name}` }, 400);
+    }
+
     let data: Record<string, unknown> = {};
     try {
       const body = await c.req.json();
@@ -150,7 +184,6 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config }: JobsRouterD
       // No body or invalid JSON is fine — trigger with empty data
     }
 
-    const teamId = c.get("teamId");
     const jobData = { ...data, teamId };
     const opts = getJobOptions(name, config);
 

@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useLocation } from "react-router";
+import { NavDropdown } from "../components/NavDropdown";
 import { ProfileDropdown } from "../components/ProfileDropdown";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
@@ -9,9 +10,17 @@ const NAV_ITEMS = [
   { to: "/schedules", label: "Schedules" },
 ] as const;
 
+const ADMIN_ITEMS = [
+  { to: "/api-keys", label: "API Keys" },
+  { to: "/teams", label: "Teams" },
+] as const;
+
 export function BaseLayout() {
   const { isDark, toggle } = useTheme();
   const { user, isLoading } = useAuth();
+  const location = useLocation();
+
+  const isAdminActive = ADMIN_ITEMS.some((item) => location.pathname.startsWith(item.to));
 
   return (
     <>
@@ -34,6 +43,18 @@ export function BaseLayout() {
                 </NavLink>
               </li>
             ))}
+            <NavDropdown label="Admin" isActive={isAdminActive}>
+              {ADMIN_ITEMS.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    className={({ isActive }) => (isActive ? "menu-active" : "")}
+                  >
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </NavDropdown>
           </ul>
           <button
             type="button"

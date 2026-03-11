@@ -15,14 +15,12 @@ export default defineConfig({
         on_success: [{ url: "${DISCORD_WEBHOOK_URL}" }],
       },
     },
-
     "slow-job": {
       command: "python3",
       script: "./jobs/shell/scripts/slow.py",
       timeout: "60s",
       description: "Long-running job for testing cancel and live streaming",
     },
-
     cinnamon: {
       command: "bun",
       script: "./jobs/cinnamon/index.ts",

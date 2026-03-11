@@ -133,6 +133,12 @@ function validateJobDefinition(name: string, def: unknown): JobDefinition {
     }
   }
 
+  if (d.teams !== undefined) {
+    if (!Array.isArray(d.teams) || d.teams.some((t) => typeof t !== "string")) {
+      throw new Error(`Job "${name}": "teams" must be an array of strings`);
+    }
+  }
+
   return d as unknown as JobDefinition;
 }
 

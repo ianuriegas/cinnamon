@@ -1,4 +1,14 @@
-import type { DefinitionRow, PaginationInfo, RunRow, RunsFilters, ScheduleRow } from "./types";
+import type {
+  ApiKeyCreateResponse,
+  ApiKeyRotateResponse,
+  ApiKeyRow,
+  DefinitionRow,
+  PaginationInfo,
+  RunRow,
+  RunsFilters,
+  ScheduleRow,
+  TeamRow,
+} from "./types";
 
 const BASE = "/api/dashboard";
 
@@ -17,6 +27,37 @@ async function get<T>(path: string): Promise<T> {
 
 async function post<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "POST", credentials: "include" });
+  handleUnauthorized(res);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  handleUnauthorized(res);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+async function patch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  handleUnauthorized(res);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "DELETE", credentials: "include" });
   handleUnauthorized(res);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
@@ -81,4 +122,47 @@ export async function fetchAuthUser(): Promise<AuthUser | null> {
   } catch {
     return null;
   }
+}
+
+// --- API Keys ---
+
+export async function fetchApiKeys(): Promise<{ data: ApiKeyRow[] }> {
+  return get("/api-keys");
+}
+
+export async function createApiKey(label: string, teamId?: number): Promise<ApiKeyCreateResponse> {
+  return postJson("/api-keys", { label, ...(teamId != null && { teamId }) });
+}
+
+export async function updateApiKeyLabel(
+  id: number,
+  label: string,
+): Promise<{ data: { id: number; label: string } }> {
+  return patch(`/api-keys/${id}`, { label });
+}
+
+export async function rotateApiKey(id: number): Promise<ApiKeyRotateResponse> {
+  return post(`/api-keys/${id}/rotate`);
+}
+
+export async function revokeApiKey(id: number): Promise<{ status: string }> {
+  return post(`/api-keys/${id}/revoke`);
+}
+
+// --- Teams ---
+
+export async function fetchTeams(): Promise<{ data: TeamRow[] }> {
+  return get("/teams");
+}
+
+export async function createTeam(name: string): Promise<{ data: TeamRow }> {
+  return postJson("/teams", { name });
+}
+
+export async function updateTeamName(id: number, name: string): Promise<{ data: TeamRow }> {
+  return patch(`/teams/${id}`, { name });
+}
+
+export async function deleteTeam(id: number): Promise<{ status: string }> {
+  return del(`/teams/${id}`);
 }

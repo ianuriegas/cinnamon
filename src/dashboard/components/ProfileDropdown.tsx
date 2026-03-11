@@ -155,11 +155,27 @@ export function ProfileDropdown({ user, isLoading }: ProfileDropdownProps) {
             <div className="w-8 rounded-full">
               <img src={user.picture} alt={user.name} referrerPolicy="no-referrer" />
             </div>
+          ) : user ? (
+            <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
+              <span className="text-xs">{getInitials(user.name || user.email)}</span>
+            </div>
           ) : (
-            <div className="avatar placeholder">
-              <div className="bg-neutral text-neutral-content w-8 rounded-full">
-                <span className="text-xs">{user ? getInitials(user.name || user.email) : "?"}</span>
-              </div>
+            <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <title>User avatar</title>
+                <circle cx="12" cy="8" r="4" />
+                <path d="M20 21a8 8 0 0 0-16 0" />
+              </svg>
             </div>
           )}
         </summary>

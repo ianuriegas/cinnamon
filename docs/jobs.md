@@ -44,6 +44,7 @@ export default defineConfig({
 | `parseJsonOutput`| boolean               | No       | Parse last JSON line from stdout                  |
 | `schedule`       | string                | No       | Cron expression (5 fields) for scheduled runs     |
 | `notifications`  | NotificationConfig    | No       | Webhook notifications on success/failure          |
+| `teams`          | string[]              | No       | Team names that can see this job in the V1 API. Omit for unrestricted visibility. Scheduled runs are tagged with the first team in the list. |
 
 ### Environment variable interpolation
 

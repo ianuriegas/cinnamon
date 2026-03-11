@@ -81,7 +81,7 @@ export async function initCommand(): Promise<void> {
 
   try {
     const apiUrl =
-      (await rl.question("API URL [http://localhost:4500]: ")) || "http://localhost:4500";
+      (await rl.question("API URL [http://localhost:3000]: ")) || "http://localhost:3000";
     rl.close();
 
     const apiKey = await readSecret("API Key: ");

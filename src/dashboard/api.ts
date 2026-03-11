@@ -5,8 +5,11 @@ import { streamSSE } from "hono/streaming";
 import type { CinnamonConfig } from "@/config/define-config.ts";
 import { CHANNEL_PREFIX, createRedisSubscriber, getRedisPublisher } from "@/config/redis-pubsub.ts";
 import { db } from "@/db/index.ts";
+import { apiKeys } from "@/db/schema/api-keys.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
+import { teams } from "@/db/schema/teams.ts";
 import { JOB_STATUS } from "@/src/job-types.ts";
+import { generateApiKey } from "@/src/lib/api-key-utils.ts";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -371,6 +374,207 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
       const msg = err instanceof Error ? err.message : "Failed to enqueue";
       return c.json({ error: msg }, 500);
     }
+  });
+
+  // --- Teams management ---
+
+  router.get("/teams", async (c) => {
+    const rows = await db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        createdAt: teams.createdAt,
+      })
+      .from(teams)
+      .orderBy(desc(teams.createdAt));
+
+    return c.json({ data: rows });
+  });
+
+  router.post("/teams", async (c) => {
+    const body = await c.req.json<{ name?: string }>();
+    const name = body.name?.trim();
+    if (!name) return c.json({ error: "Name is required" }, 400);
+
+    const [inserted] = await db
+      .insert(teams)
+      .values({ name })
+      .returning({ id: teams.id, name: teams.name, createdAt: teams.createdAt });
+
+    return c.json({ data: inserted });
+  });
+
+  router.patch("/teams/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid team ID" }, 400);
+    }
+
+    const body = await c.req.json<{ name: string }>();
+    const name = body.name?.trim();
+    if (!name) return c.json({ error: "Name is required" }, 400);
+
+    const [updated] = await db
+      .update(teams)
+      .set({ name })
+      .where(eq(teams.id, id))
+      .returning({ id: teams.id, name: teams.name, createdAt: teams.createdAt });
+
+    if (!updated) return c.json({ error: "Team not found" }, 404);
+    return c.json({ data: updated });
+  });
+
+  router.delete("/teams/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid team ID" }, 400);
+    }
+
+    const [existing] = await db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(eq(teams.id, id))
+      .limit(1);
+    if (!existing) return c.json({ error: "Team not found" }, 404);
+
+    await db.transaction(async (tx) => {
+      await tx.delete(apiKeys).where(eq(apiKeys.teamId, id));
+      await tx.update(jobsLog).set({ teamId: null }).where(eq(jobsLog.teamId, id));
+      await tx.delete(teams).where(eq(teams.id, id));
+    });
+
+    return c.json({ status: "deleted" });
+  });
+
+  // --- API Keys management ---
+
+  router.get("/api-keys", async (c) => {
+    const rows = await db
+      .select({
+        id: apiKeys.id,
+        label: apiKeys.label,
+        keyHash: apiKeys.keyHash,
+        revoked: apiKeys.revoked,
+        createdAt: apiKeys.createdAt,
+        lastUsedAt: apiKeys.lastUsedAt,
+        teamId: apiKeys.teamId,
+        teamName: teams.name,
+      })
+      .from(apiKeys)
+      .innerJoin(teams, eq(apiKeys.teamId, teams.id))
+      .orderBy(desc(apiKeys.createdAt));
+
+    const data = rows.map((row) => ({
+      id: row.id,
+      label: row.label,
+      keyHint: row.keyHash.slice(-8),
+      revoked: row.revoked,
+      createdAt: row.createdAt,
+      lastUsedAt: row.lastUsedAt,
+      teamId: row.teamId,
+      teamName: row.teamName,
+    }));
+
+    return c.json({ data });
+  });
+
+  router.post("/api-keys", async (c) => {
+    const body = await c.req.json<{ label?: string; teamId?: number }>();
+    const label = body.label?.trim() || null;
+
+    let teamId = body.teamId;
+    if (!teamId) {
+      const [firstTeam] = await db
+        .select({ id: sql<number>`id` })
+        .from(sql`cinnamon.teams`)
+        .limit(1);
+      if (!firstTeam) return c.json({ error: "No team exists" }, 400);
+      teamId = firstTeam.id;
+    }
+
+    const { plainKey, keyHash } = generateApiKey();
+    const [inserted] = await db
+      .insert(apiKeys)
+      .values({ teamId, keyHash, label })
+      .returning({ id: apiKeys.id, createdAt: apiKeys.createdAt });
+
+    return c.json({
+      id: inserted.id,
+      label,
+      plainKey,
+      keyHint: keyHash.slice(-8),
+      createdAt: inserted.createdAt,
+    });
+  });
+
+  router.patch("/api-keys/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid key ID" }, 400);
+    }
+
+    const body = await c.req.json<{ label: string }>();
+    const label = body.label?.trim();
+    if (!label) return c.json({ error: "Label is required" }, 400);
+
+    const [updated] = await db
+      .update(apiKeys)
+      .set({ label })
+      .where(eq(apiKeys.id, id))
+      .returning({ id: apiKeys.id, label: apiKeys.label });
+
+    if (!updated) return c.json({ error: "API key not found" }, 404);
+    return c.json({ data: updated });
+  });
+
+  router.post("/api-keys/:id/rotate", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid key ID" }, 400);
+    }
+
+    const [existing] = await db
+      .select({ teamId: apiKeys.teamId, label: apiKeys.label, revoked: apiKeys.revoked })
+      .from(apiKeys)
+      .where(eq(apiKeys.id, id))
+      .limit(1);
+
+    if (!existing) return c.json({ error: "API key not found" }, 404);
+    if (existing.revoked) return c.json({ error: "Cannot rotate a revoked key" }, 400);
+
+    const { plainKey, keyHash } = generateApiKey();
+
+    await db.update(apiKeys).set({ revoked: true }).where(eq(apiKeys.id, id));
+
+    const [inserted] = await db
+      .insert(apiKeys)
+      .values({ teamId: existing.teamId, keyHash, label: existing.label })
+      .returning({ id: apiKeys.id, createdAt: apiKeys.createdAt });
+
+    return c.json({
+      id: inserted.id,
+      label: existing.label,
+      plainKey,
+      keyHint: keyHash.slice(-8),
+      createdAt: inserted.createdAt,
+      rotatedFromId: id,
+    });
+  });
+
+  router.post("/api-keys/:id/revoke", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid key ID" }, 400);
+    }
+
+    const [updated] = await db
+      .update(apiKeys)
+      .set({ revoked: true })
+      .where(eq(apiKeys.id, id))
+      .returning({ id: apiKeys.id });
+
+    if (!updated) return c.json({ error: "API key not found" }, 404);
+    return c.json({ status: "revoked" });
   });
 
   return router;

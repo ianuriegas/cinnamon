@@ -22,6 +22,8 @@ export interface JobDefinition {
   /** Cron expression for scheduled execution. */
   schedule?: string;
   notifications?: NotificationConfig;
+  /** Team names that can see this job in the API. Omit for unrestricted visibility. */
+  teams?: string[];
 }
 
 export interface CinnamonConfig {

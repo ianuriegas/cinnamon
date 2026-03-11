@@ -50,6 +50,31 @@ export interface ScheduleRow {
   };
 }
 
+export interface TeamRow {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
+export interface ApiKeyRow {
+  id: number;
+  label: string | null;
+  keyHint: string;
+  revoked: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
+  teamId: number;
+  teamName: string;
+}
+
+export interface ApiKeyCreateResponse extends ApiKeyRow {
+  plainKey: string;
+}
+
+export interface ApiKeyRotateResponse extends ApiKeyCreateResponse {
+  rotatedFromId: number;
+}
+
 export interface ShellResult {
   stdout?: string;
   stderr?: string;

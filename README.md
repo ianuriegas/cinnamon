@@ -39,7 +39,13 @@ bun run db:migrate
 bun run scripts/seed-team.ts
 ```
 
-3. Open two terminals -- one for the worker, one for the API server + dashboard:
+3. Configure the CLI (run once, then paste the key when prompted):
+
+```bash
+cinnamon init
+```
+
+4. Open two terminals -- one for the worker, one for the API server + dashboard:
 
 ```bash
 bun run worker
@@ -53,7 +59,7 @@ Starts API server (:3000) and Vite dashboard (:5173).
 
 Open `http://localhost:5173/dashboard` to view the dashboard (with HMR).
 
-4. Trigger a job:
+5. Trigger a job:
 
 ```bash
 cinnamon trigger hello-world

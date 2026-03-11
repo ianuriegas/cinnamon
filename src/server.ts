@@ -6,6 +6,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { getJobHandlers, getJobOptions } from "@/config/dynamic-registry.ts";
 import { getEnv, isDashboardAuthEnabled } from "@/config/env.ts";
 import { loadConfig } from "@/config/load-config.ts";
+import { resolveTeams } from "@/config/resolve-teams.ts";
 import { pool } from "@/db/index.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 import { csrfMiddleware } from "@/src/auth/csrf.ts";
@@ -18,6 +19,7 @@ import { jobsQueue } from "./queue.ts";
 
 const jobHandlers = await getJobHandlers();
 const config = await loadConfig();
+const { jobTeamIds } = await resolveTeams(config);
 
 type AppEnv = {
   Variables: {
@@ -50,6 +52,11 @@ v1.post("/enqueue", async (c) => {
   }
 
   const teamId = c.get("teamId");
+
+  const allowedTeams = jobTeamIds.get(body.jobName);
+  if (allowedTeams && !allowedTeams.includes(teamId)) {
+    return c.json({ error: `Unknown job: ${body.jobName}` }, 400);
+  }
   const jobData = { ...body.data, teamId };
   const opts = getJobOptions(body.jobName, config);
   const job = await jobsQueue.add(body.jobName, jobData, opts);
@@ -57,7 +64,7 @@ v1.post("/enqueue", async (c) => {
   return c.json({ jobId: job.id, jobName: job.name });
 });
 
-const jobsRouter = createJobsRouter({ jobsQueue, jobHandlers, config });
+const jobsRouter = createJobsRouter({ jobsQueue, jobHandlers, config, jobTeamIds });
 v1.route("/jobs", jobsRouter);
 
 app.route("/v1", v1);

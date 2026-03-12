@@ -11,7 +11,7 @@ config/
   load-config.ts      Config loader with validation
 db/
   connection.ts       Shared Postgres pool
-  schema/             Drizzle table definitions (cinnamon.jobs_log, cinnamon.teams, cinnamon.api_keys, cinnamon.users, cinnamon.access_requests)
+  schema/             Drizzle table definitions (cinnamon.jobs_log, cinnamon.teams, cinnamon.api_keys, cinnamon.users, cinnamon.user_teams, cinnamon.access_requests)
   migrations/         Generated SQL migrations (single 0000 creates cinnamon schema + tables)
 jobs/
   _shared/            Shared utilities (isDirectExecution)
@@ -46,6 +46,8 @@ src/
   scheduler.ts        Cron schedule registration
   auth.ts             API key verification (SHA-256 hash lookup)
   job-types.ts        Shared job type definitions
+  lib/
+    team-utils.ts     isJobVisibleToTeam, isJobVisibleToAnyTeam
   notifications.ts    Webhook dispatcher (Discord, Slack, generic) with retry
   payload.ts          CLI payload parsing
   auth/               Dashboard OAuth (Google) and session management
@@ -61,12 +63,12 @@ src/
   dashboard/          React SPA (Vite + Tailwind + DaisyUI)
     index.html        Vite HTML entry point
     main.tsx          React entry (mounts <App /> into #root)
-    App.tsx           React Router routes
+    App.tsx           React Router routes (includes NoTeamsPage for users with no team assignment)
     styles.css        Tailwind v4 + DaisyUI v5 + Gruvbox themes
     api.ts            Server-side Hono JSON API (mounted at /api/dashboard, includes cancel + SSE stream)
     layouts/
       BaseLayout.tsx  Shell layout (navbar, theme toggle, <Outlet />)
-    pages/            Full-page views (RunsPage, RunDetailPage, etc.)
+    pages/            Full-page views (RunsPage, RunDetailPage, NoTeamsPage, etc.)
     components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo, ProfileDropdown)
     contexts/         React contexts (TimezoneContext)
     hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE), useAuth, useTimezone

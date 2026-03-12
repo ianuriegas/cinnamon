@@ -34,7 +34,7 @@ When `ACCESS_REQUESTS_ENABLED` is not set or `false`, unapproved users see a sta
 
 Super-admins manage access requests from the **Users** page in the dashboard:
 
-- **Approve** -- creates a user record (or re-enables a disabled one) and marks the request as approved.
+- **Approve** -- creates a user record (or re-enables a disabled one) and marks the request as approved. You can optionally assign the user to one or more teams; users need at least one team to access the dashboard (they see a "No teams assigned" page otherwise).
 - **Deny** -- marks the request as denied with an optional note explaining why.
 
 Both approve and deny are wrapped in a database transaction for consistency.

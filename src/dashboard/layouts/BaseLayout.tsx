@@ -11,9 +11,9 @@ const NAV_ITEMS = [
 ] as const;
 
 const ADMIN_ITEMS = [
-  { to: "/users", label: "Users" },
-  { to: "/api-keys", label: "API Keys" },
-  { to: "/teams", label: "Teams" },
+  { to: "/admin/users", label: "Users" },
+  { to: "/admin/api-keys", label: "API Keys" },
+  { to: "/admin/teams", label: "Teams" },
 ] as const;
 
 export function BaseLayout() {

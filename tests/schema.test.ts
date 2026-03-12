@@ -7,13 +7,22 @@ import { db } from "@/db/index.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
+import { userTeams } from "@/db/schema/user-teams.ts";
+import { users } from "@/db/schema/users.ts";
 
 const TEST_TEAM_NAME = `__test_team_${Date.now()}`;
+const TEST_USER_EMAIL = `__test_user_${Date.now()}@test.local`;
+const TEST_USER_SUB = `__test_user_sub_${Date.now()}`;
 
 let testTeamId: number;
+let testUserId: number | undefined;
 
 describe("Phase 2 schema", () => {
   after(async () => {
+    if (testUserId != null) {
+      await db.delete(userTeams).where(eq(userTeams.userId, testUserId));
+      await db.delete(users).where(eq(users.id, testUserId));
+    }
     await db.delete(jobsLog).where(eq(jobsLog.teamId, testTeamId));
     await db.delete(apiKeys).where(eq(apiKeys.teamId, testTeamId));
     await db.delete(teams).where(eq(teams.id, testTeamId));
@@ -89,5 +98,51 @@ describe("Phase 2 schema", () => {
     assert.equal(inserted.teamId, null);
 
     await db.delete(jobsLog).where(eq(jobsLog.jobId, jobId));
+  });
+
+  test("can insert user_teams with valid user and team", async () => {
+    const [insertedUser] = await db
+      .insert(users)
+      .values({
+        email: TEST_USER_EMAIL,
+        googleSub: TEST_USER_SUB,
+        isSuperAdmin: false,
+        disabled: false,
+      })
+      .returning();
+    testUserId = insertedUser.id;
+
+    const [inserted] = await db
+      .insert(userTeams)
+      .values({ userId: testUserId, teamId: testTeamId })
+      .returning();
+    assert.ok(inserted.id > 0);
+    assert.equal(inserted.userId, testUserId);
+    assert.equal(inserted.teamId, testTeamId);
+    assert.ok(inserted.createdAt instanceof Date);
+  });
+
+  test("user_teams unique constraint rejects duplicate user_id + team_id", async () => {
+    const uid = testUserId;
+    if (uid == null) throw new Error("testUserId not set");
+    await assert.rejects(() => db.insert(userTeams).values({ userId: uid, teamId: testTeamId }));
+  });
+
+  test("deleting user cascades user_teams", async () => {
+    const [u] = await db
+      .insert(users)
+      .values({
+        email: `__test_cascade_${Date.now()}@test.local`,
+        googleSub: `__test_cascade_sub_${Date.now()}`,
+        isSuperAdmin: false,
+        disabled: false,
+      })
+      .returning();
+    await db.insert(userTeams).values({ userId: u.id, teamId: testTeamId });
+    const before = await db.select().from(userTeams).where(eq(userTeams.userId, u.id));
+    assert.equal(before.length, 1);
+    await db.delete(users).where(eq(users.id, u.id));
+    const after = await db.select().from(userTeams).where(eq(userTeams.userId, u.id));
+    assert.equal(after.length, 0);
   });
 });

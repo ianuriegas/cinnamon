@@ -33,6 +33,7 @@ function dashboardHeaders(jwt: string) {
 
 describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured" }, () => {
   before(async () => {
+    if (!canRunAuthTests) return;
     const { createSessionJwt } = await import("@/src/auth/dashboard-auth.ts");
 
     const [adminUser] = await db
@@ -80,12 +81,16 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   after(async () => {
+    if (!canRunAuthTests) return;
     await db.delete(accessRequests).where(eq(accessRequests.email, requesterEmail));
     await db.delete(users).where(eq(users.email, requesterEmail));
-    await db.delete(users).where(eq(users.id, adminUserId));
+    if (adminUserId != null) {
+      await db.delete(users).where(eq(users.id, adminUserId));
+    }
   });
 
   test("GET /access-requests/mine returns requester's request", async () => {
+    if (!canRunAuthTests) return;
     const res = await req("/api/dashboard/access-requests/mine", {
       headers: dashboardHeaders(requesterJwt),
     });
@@ -96,11 +101,13 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   test("GET /access-requests/mine requires auth", async () => {
+    if (!canRunAuthTests) return;
     const res = await req("/api/dashboard/access-requests/mine");
     assert.equal(res.status, 401);
   });
 
   test("approve creates user and updates request status", async () => {
+    if (!canRunAuthTests) return;
     const res = await req(`/api/dashboard/access-requests/${pendingRequestId}/approve`, {
       method: "POST",
       headers: dashboardHeaders(adminJwt),
@@ -128,6 +135,7 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   test("approve rejects already-decided request", async () => {
+    if (!canRunAuthTests) return;
     const res = await req(`/api/dashboard/access-requests/${pendingRequestId}/approve`, {
       method: "POST",
       headers: dashboardHeaders(adminJwt),
@@ -138,6 +146,7 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   test("approve requires super-admin", async () => {
+    if (!canRunAuthTests) return;
     const res = await req(`/api/dashboard/access-requests/${pendingRequestId}/approve`, {
       method: "POST",
       headers: dashboardHeaders(requesterJwt),
@@ -146,6 +155,7 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   test("deny updates request status with notes", async () => {
+    if (!canRunAuthTests) return;
     const [newReq] = await db
       .insert(accessRequests)
       .values({
@@ -179,6 +189,7 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   test("deny requires super-admin", async () => {
+    if (!canRunAuthTests) return;
     const res = await req(`/api/dashboard/access-requests/${pendingRequestId}/deny`, {
       method: "POST",
       headers: dashboardHeaders(requesterJwt),
@@ -187,11 +198,13 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   });
 
   test("approve re-enables disabled user instead of creating duplicate", async () => {
+    if (!canRunAuthTests) return;
     const [disabledUser] = await db
       .select()
       .from(users)
       .where(eq(users.email, requesterEmail))
       .limit(1);
+    assert.ok(disabledUser, "Requester user should exist from prior approve test");
 
     await db.update(users).set({ disabled: true }).where(eq(users.id, disabledUser.id));
 

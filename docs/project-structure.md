@@ -16,6 +16,8 @@ db/
 jobs/
   _shared/            Shared utilities (isDirectExecution)
   cinnamon/           Countdown demo job (config-driven)
+  require-package-ts/ TypeScript job with npm package (nanoid)
+  require-package-py/ Python job with uv + pyproject.toml (humanize)
   shell/              Shell/process executor (run any command/script)
     scripts/          Example scripts (hello.py, example-json.py, slow.py)
   native-handlers.ts  Shell executor registration (framework internal)

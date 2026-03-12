@@ -80,7 +80,8 @@ export function UsersPage() {
           className={`tab ${tab === "users" ? "tab-active" : ""}`}
           onClick={() => setTab("users")}
         >
-          Users ({usersList.length})
+          Users
+          <span className="badge badge-warning badge-sm ml-2">{usersList.length}</span>
         </button>
         <button
           type="button"

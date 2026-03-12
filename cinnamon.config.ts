@@ -25,5 +25,22 @@ export default defineConfig({
       timeout: "30s",
       description: "Cinnamon countdown demo job",
     },
+    "require-package-ts": {
+      command: "bun",
+      script: "./jobs/require-package-ts/index.ts",
+      timeout: "30s",
+      description: "TypeScript job that imports nanoid (tests package loading)",
+    },
+    "require-package-py": {
+      command: "uv",
+      args: [
+        "run",
+        "--project",
+        "./jobs/require-package-py",
+        "./jobs/require-package-py/script.py",
+      ],
+      timeout: "30s",
+      description: "Python job that imports humanize via uv (tests package loading)",
+    },
   },
 });

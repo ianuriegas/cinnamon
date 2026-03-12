@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
-import { isAccessRequestsEnabled, isSuperAdmin } from "@/config/env.ts";
+import { isAccessRequestsEnabled, isDashboardAuthEnabled, isSuperAdmin } from "@/config/env.ts";
 import { db } from "@/db/index.ts";
 import { teams } from "@/db/schema/teams.ts";
 import { userTeams } from "@/db/schema/user-teams.ts";
@@ -233,6 +233,23 @@ export function createAuthRoutes() {
   });
 
   router.get("/me", async (c) => {
+    if (!isDashboardAuthEnabled()) {
+      return c.json({
+        authenticated: true,
+        user: {
+          userId: 0,
+          email: "",
+          name: null,
+          picture: null,
+          isSuperAdmin: true,
+          disabled: false,
+          teamIds: [],
+          teamNames: [],
+        },
+        accessRequestsEnabled: isAccessRequestsEnabled(),
+        authEnabled: false,
+      });
+    }
     const { verifySession } = await import("./dashboard-auth.ts");
     const token = getCookie(c, SESSION_COOKIE);
     if (!token) return c.json({ authenticated: false }, 401);
@@ -266,6 +283,7 @@ export function createAuthRoutes() {
         teamNames,
       },
       accessRequestsEnabled: isAccessRequestsEnabled(),
+      authEnabled: true,
     });
   });
 

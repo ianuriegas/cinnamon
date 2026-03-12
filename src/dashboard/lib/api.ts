@@ -127,19 +127,25 @@ export interface AuthUser {
 export interface AuthResponse {
   user: AuthUser | null;
   accessRequestsEnabled: boolean;
+  authEnabled: boolean;
 }
 
 export async function fetchAuthUser(): Promise<AuthResponse> {
   try {
     const res = await fetch("/auth/me", { credentials: "include" });
-    if (!res.ok) return { user: null, accessRequestsEnabled: false };
+    if (res.status === 401) {
+      window.location.replace("/auth/login");
+      return { user: null, accessRequestsEnabled: false, authEnabled: true };
+    }
+    if (!res.ok) return { user: null, accessRequestsEnabled: false, authEnabled: true };
     const data = await res.json();
     return {
       user: data.authenticated ? data.user : null,
       accessRequestsEnabled: data.accessRequestsEnabled ?? false,
+      authEnabled: data.authEnabled ?? true,
     };
   } catch {
-    return { user: null, accessRequestsEnabled: false };
+    return { user: null, accessRequestsEnabled: false, authEnabled: true };
   }
 }
 

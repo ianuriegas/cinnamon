@@ -4,6 +4,7 @@ export const JOB_STATUS = {
   completed: "completed",
   failed: "failed",
   cancelled: "cancelled",
+  interrupted: "interrupted",
 } as const;
 
 export type JobData = Record<string, unknown>;

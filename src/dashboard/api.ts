@@ -207,7 +207,8 @@ export function createDashboardApi({
     const isTerminal =
       row.status === JOB_STATUS.completed ||
       row.status === JOB_STATUS.failed ||
-      row.status === JOB_STATUS.cancelled;
+      row.status === JOB_STATUS.cancelled ||
+      row.status === JOB_STATUS.interrupted;
 
     if (isTerminal) {
       return streamSSE(c, async (stream) => {

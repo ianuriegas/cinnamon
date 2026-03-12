@@ -4,6 +4,7 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "badge-error",
   processing: "badge-warning",
   cancelled: "badge-neutral",
+  interrupted: "badge-warning",
 };
 
 export function StatusBadge({ status }: { status: string }) {

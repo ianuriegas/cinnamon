@@ -18,7 +18,7 @@ const ADMIN_ITEMS = [
 
 export function BaseLayout() {
   const { isDark, toggle } = useTheme();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, authEnabled } = useAuth();
   const location = useLocation();
 
   const isAdminActive = ADMIN_ITEMS.some((item) => location.pathname.startsWith(item.to));
@@ -46,16 +46,18 @@ export function BaseLayout() {
             ))}
             {user?.isSuperAdmin && (
               <NavDropdown label="Admin" isActive={isAdminActive}>
-                {ADMIN_ITEMS.map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      className={({ isActive }) => (isActive ? "menu-active" : "")}
-                    >
-                      {item.label}
-                    </NavLink>
-                  </li>
-                ))}
+                {ADMIN_ITEMS.filter((item) => authEnabled || item.to !== "/admin/users").map(
+                  (item) => (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        className={({ isActive }) => (isActive ? "menu-active" : "")}
+                      >
+                        {item.label}
+                      </NavLink>
+                    </li>
+                  ),
+                )}
               </NavDropdown>
             )}
           </ul>
@@ -100,7 +102,7 @@ export function BaseLayout() {
               </svg>
             )}
           </button>
-          <ProfileDropdown user={user} isLoading={isLoading} />
+          <ProfileDropdown user={user} isLoading={isLoading} authEnabled={authEnabled} />
         </div>
       </div>
 

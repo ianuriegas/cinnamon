@@ -118,9 +118,10 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
 interface ProfileDropdownProps {
   user: AuthUser | null;
   isLoading: boolean;
+  authEnabled: boolean;
 }
 
-export function ProfileDropdown({ user, isLoading }: ProfileDropdownProps) {
+export function ProfileDropdown({ user, isLoading, authEnabled }: ProfileDropdownProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -149,11 +150,11 @@ export function ProfileDropdown({ user, isLoading }: ProfileDropdownProps) {
     <>
       <details ref={detailsRef} className="dropdown dropdown-end">
         <summary className="btn btn-ghost btn-circle avatar" aria-label="Profile menu">
-          {user?.picture ? (
+          {authEnabled && user?.picture ? (
             <div className="w-8 rounded-full">
               <img src={user.picture} alt={user.name} referrerPolicy="no-referrer" />
             </div>
-          ) : user ? (
+          ) : authEnabled && user ? (
             <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
               <span className="text-xs">{getInitials(user.name || user.email)}</span>
             </div>
@@ -179,7 +180,7 @@ export function ProfileDropdown({ user, isLoading }: ProfileDropdownProps) {
         </summary>
 
         <ul className="dropdown-content menu bg-base-100 rounded-box z-10 w-64 p-2 shadow-lg mt-2">
-          {user && (
+          {authEnabled && user ? (
             <>
               <li className="menu-title px-3 pt-2 pb-1">
                 <div className="flex items-center gap-3">
@@ -199,7 +200,9 @@ export function ProfileDropdown({ user, isLoading }: ProfileDropdownProps) {
               </li>
               <li className="h-px bg-base-300 my-1" />
             </>
-          )}
+          ) : !authEnabled ? (
+            <li className="menu-title px-3 pt-2 pb-1 text-base-content/60 text-sm">Dev mode</li>
+          ) : null}
 
           <li>
             <button type="button" onClick={openSettings}>
@@ -207,7 +210,7 @@ export function ProfileDropdown({ user, isLoading }: ProfileDropdownProps) {
             </button>
           </li>
 
-          {user && (
+          {authEnabled && user && (
             <>
               <li className="h-px bg-base-300 my-1" />
               <li>

@@ -12,7 +12,7 @@ import { TeamsPage } from "./pages/TeamsPage";
 import { UsersPage } from "./pages/UsersPage";
 
 export function App() {
-  const { user, isLoading, accessRequestsEnabled } = useAuth();
+  const { user, isLoading, accessRequestsEnabled, authEnabled } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,7 +38,10 @@ export function App() {
         <Route path="runs/:id" element={<RunDetailPage />} />
         <Route path="definitions" element={<DefinitionsPage />} />
         <Route path="schedules" element={<SchedulesPage />} />
-        <Route path="admin/users" element={<UsersPage />} />
+        <Route
+          path="admin/users"
+          element={authEnabled ? <UsersPage /> : <Navigate to="/" replace />}
+        />
         <Route path="admin/api-keys" element={<ApiKeysPage />} />
         <Route path="admin/teams" element={<TeamsPage />} />
       </Route>

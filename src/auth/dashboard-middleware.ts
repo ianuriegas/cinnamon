@@ -29,8 +29,22 @@ async function loadUserTeamIds(userId: number): Promise<number[]> {
   return rows.map((r) => r.teamId);
 }
 
+const ANONYMOUS_SUPER_ADMIN = {
+  id: 0,
+  email: "",
+  googleSub: undefined,
+  name: null as string | null,
+  picture: null as string | null,
+  isSuperAdmin: true,
+  disabled: false,
+};
+
 export async function dashboardAuthMiddleware(c: Context, next: Next) {
-  if (!isDashboardAuthEnabled()) return next();
+  if (!isDashboardAuthEnabled()) {
+    c.set("user", ANONYMOUS_SUPER_ADMIN);
+    c.set("userTeamIds", []);
+    return next();
+  }
 
   const token = getCookie(c, SESSION_COOKIE);
   if (!token) return c.json({ error: "Unauthorized" }, 401);

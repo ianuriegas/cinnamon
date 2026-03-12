@@ -3,6 +3,7 @@ import { useAuth } from "./hooks/useAuth";
 import { BaseLayout } from "./layouts/BaseLayout";
 import { ApiKeysPage } from "./pages/ApiKeysPage";
 import { DefinitionsPage } from "./pages/DefinitionsPage";
+import { NoTeamsPage } from "./pages/NoTeamsPage";
 import { RequestAccessPage } from "./pages/RequestAccessPage";
 import { RunDetailPage } from "./pages/RunDetailPage";
 import { RunsPage } from "./pages/RunsPage";
@@ -25,6 +26,11 @@ export function App() {
     return <RequestAccessPage user={user} accessRequestsEnabled={accessRequestsEnabled} />;
   }
 
+  const hasTeams = user?.isSuperAdmin || (user?.teamIds && user.teamIds.length > 0) || false;
+  if (user && !hasTeams) {
+    return <NoTeamsPage user={user} />;
+  }
+
   return (
     <Routes>
       <Route path="/" element={<BaseLayout />}>
@@ -32,9 +38,9 @@ export function App() {
         <Route path="runs/:id" element={<RunDetailPage />} />
         <Route path="definitions" element={<DefinitionsPage />} />
         <Route path="schedules" element={<SchedulesPage />} />
-        <Route path="api-keys" element={<ApiKeysPage />} />
-        <Route path="teams" element={<TeamsPage />} />
-        <Route path="users" element={<UsersPage />} />
+        <Route path="admin/users" element={<UsersPage />} />
+        <Route path="admin/api-keys" element={<ApiKeysPage />} />
+        <Route path="admin/teams" element={<TeamsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

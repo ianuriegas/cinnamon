@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db/index.ts";
 import { accessRequests } from "@/db/schema/access-requests.ts";
+import { teams } from "@/db/schema/teams.ts";
+import { userTeams } from "@/db/schema/user-teams.ts";
 import { users } from "@/db/schema/users.ts";
 import { app } from "@/src/server.ts";
 
@@ -83,8 +85,17 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
   after(async () => {
     if (!canRunAuthTests) return;
     await db.delete(accessRequests).where(eq(accessRequests.email, requesterEmail));
+    const [requesterUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, requesterEmail))
+      .limit(1);
+    if (requesterUser) {
+      await db.delete(userTeams).where(eq(userTeams.userId, requesterUser.id));
+    }
     await db.delete(users).where(eq(users.email, requesterEmail));
     if (adminUserId != null) {
+      await db.delete(userTeams).where(eq(userTeams.userId, adminUserId));
       await db.delete(users).where(eq(users.id, adminUserId));
     }
   });
@@ -232,5 +243,59 @@ describe("Access Requests", { skip: !canRunAuthTests && "Auth env not configured
     assert.equal(allUsers.length, 1, "Should not create a duplicate user");
 
     await db.delete(accessRequests).where(eq(accessRequests.id, newReq.id));
+  });
+
+  test("approve with teamIds assigns teams to user", async () => {
+    if (!canRunAuthTests) return;
+    const [teamA] = await db
+      .insert(teams)
+      .values({ name: `${TEST_PREFIX}_team_a` })
+      .returning();
+    const [teamB] = await db
+      .insert(teams)
+      .values({ name: `${TEST_PREFIX}_team_b` })
+      .returning();
+
+    const approveEmail = `${TEST_PREFIX}_approve_teams@test.local`;
+    const approveSub = `${TEST_PREFIX}_approve_teams_sub`;
+    const [newReq] = await db
+      .insert(accessRequests)
+      .values({
+        email: approveEmail,
+        googleSub: approveSub,
+        name: "Approve Teams Test",
+        picture: "",
+        status: "pending",
+      })
+      .returning();
+
+    const res = await req(`/api/dashboard/access-requests/${newReq.id}/approve`, {
+      method: "POST",
+      headers: dashboardHeaders(adminJwt),
+      body: JSON.stringify({ teamIds: [teamA.id, teamB.id] }),
+    });
+    assert.equal(res.status, 200);
+
+    const [createdUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, approveEmail))
+      .limit(1);
+    assert.ok(createdUser, "User should be created");
+    const utRows = await db
+      .select({ teamId: userTeams.teamId })
+      .from(userTeams)
+      .where(eq(userTeams.userId, createdUser.id));
+    const assignedIds = utRows.map((r) => r.teamId).sort((a, b) => a - b);
+    assert.deepEqual(
+      assignedIds,
+      [teamA.id, teamB.id].sort((a, b) => a - b),
+    );
+
+    await db.delete(userTeams).where(eq(userTeams.userId, createdUser.id));
+    await db.delete(accessRequests).where(eq(accessRequests.id, newReq.id));
+    await db.delete(users).where(eq(users.id, createdUser.id));
+    await db.delete(teams).where(eq(teams.id, teamA.id));
+    await db.delete(teams).where(eq(teams.id, teamB.id));
   });
 });

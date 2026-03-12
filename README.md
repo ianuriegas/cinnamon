@@ -3,7 +3,7 @@
 A job orchestration framework powered by BullMQ, Postgres, and Hono. Define jobs in a config file, trigger them via CLI, HTTP API, or cron, and monitor everything through a built-in dashboard.
 
 - **Language-agnostic** -- run Python, Bash, Node, or any command. If it runs in a shell, cinnamon can orchestrate it.
-- **Multi-tenant** -- teams and API keys isolate workloads. Each job run is scoped to the team that triggered it.
+- **Multi-tenant** -- teams and API keys isolate workloads. Each job run is scoped to the team that triggered it. The dashboard is team-scoped for regular users; super admins see all.
 - **Durable** -- every run is logged to Postgres with status, stdout, stderr, timing, and structured results.
 - **Observable** -- query job history, inspect runs, check schedules, and stream live logs through the REST API or dashboard.
 - **Notifiable** -- get Slack, Discord, or generic webhook notifications on job success or failure.

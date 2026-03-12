@@ -86,6 +86,7 @@ export interface UserRow {
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
+  teams?: TeamRow[];
 }
 
 export interface AccessRequestRow {

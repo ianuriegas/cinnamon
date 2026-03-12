@@ -4,6 +4,8 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 import { isAccessRequestsEnabled, isSuperAdmin } from "@/config/env.ts";
 import { db } from "@/db/index.ts";
+import { teams } from "@/db/schema/teams.ts";
+import { userTeams } from "@/db/schema/user-teams.ts";
 import { users } from "@/db/schema/users.ts";
 import {
   createSessionJwt,
@@ -239,6 +241,17 @@ export function createAuthRoutes() {
     if (!session) return c.json({ authenticated: false }, 401);
 
     const [dbUser] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+    let teamIds: number[] = [];
+    let teamNames: string[] = [];
+    if (dbUser) {
+      const utRows = await db
+        .select({ teamId: userTeams.teamId, teamName: teams.name })
+        .from(userTeams)
+        .innerJoin(teams, eq(userTeams.teamId, teams.id))
+        .where(eq(userTeams.userId, dbUser.id));
+      teamIds = utRows.map((r) => r.teamId);
+      teamNames = utRows.map((r) => r.teamName);
+    }
 
     return c.json({
       authenticated: true,
@@ -249,6 +262,8 @@ export function createAuthRoutes() {
         picture: dbUser?.picture ?? session.picture,
         isSuperAdmin: dbUser?.isSuperAdmin ?? session.isSuperAdmin,
         disabled: dbUser ? dbUser.disabled : true,
+        teamIds,
+        teamNames,
       },
       accessRequestsEnabled: isAccessRequestsEnabled(),
     });

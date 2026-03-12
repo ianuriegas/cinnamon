@@ -374,7 +374,7 @@ function CreateKeyModal({
               <button type="button" className="btn" onClick={onClose}>
                 Cancel
               </button>
-              <a href="/teams" className="btn btn-primary">
+              <a href="/admin/teams" className="btn btn-primary">
                 Go to Teams
               </a>
             </div>

@@ -5,10 +5,12 @@ import {
   approveAccessRequest,
   denyAccessRequest,
   fetchAccessRequests,
+  fetchTeams,
   fetchUsers,
   updateUser,
+  updateUserTeams,
 } from "../lib/api";
-import type { AccessRequestRow, UserRow } from "../lib/types";
+import type { AccessRequestRow, TeamRow, UserRow } from "../lib/types";
 
 type Tab = "users" | "requests";
 
@@ -16,13 +18,21 @@ export function UsersPage() {
   const [tab, setTab] = useState<Tab>("users");
   const [usersList, setUsersList] = useState<UserRow[]>([]);
   const [requests, setRequests] = useState<AccessRequestRow[]>([]);
+  const [teams, setTeams] = useState<TeamRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [denyModal, setDenyModal] = useState<{ id: number; email: string } | null>(null);
+  const [approveModal, setApproveModal] = useState<{ id: number; email: string } | null>(null);
+  const [editTeamsModal, setEditTeamsModal] = useState<UserRow | null>(null);
 
   const load = useCallback(async () => {
-    const [usersRes, requestsRes] = await Promise.all([fetchUsers(), fetchAccessRequests()]);
+    const [usersRes, requestsRes, teamsRes] = await Promise.all([
+      fetchUsers(),
+      fetchAccessRequests(),
+      fetchTeams(),
+    ]);
     setUsersList(usersRes.data);
     setRequests(requestsRes.data);
+    setTeams(teamsRes.data);
     setIsLoading(false);
   }, []);
 
@@ -37,8 +47,15 @@ export function UsersPage() {
     await load();
   }
 
-  async function handleApprove(id: number) {
-    await approveAccessRequest(id);
+  async function handleApprove(id: number, teamIds?: number[]) {
+    await approveAccessRequest(id, teamIds);
+    setApproveModal(null);
+    await load();
+  }
+
+  async function handleEditTeams(user: UserRow, teamIds: number[]) {
+    await updateUserTeams(user.id, teamIds);
+    setEditTeamsModal(null);
     await load();
   }
 
@@ -82,7 +99,7 @@ export function UsersPage() {
         <div className="card bg-base-100 shadow-sm">
           <div className="card-body p-0">
             {isLoading ? (
-              <SkeletonTable cols={6} />
+              <SkeletonTable cols={7} />
             ) : usersList.length === 0 ? (
               <div className="text-center py-12 text-base-content/60">
                 <p className="text-lg">No users</p>
@@ -95,6 +112,7 @@ export function UsersPage() {
                     <tr>
                       <th>User</th>
                       <th>Email</th>
+                      <th>Teams</th>
                       <th>Role</th>
                       <th>Status</th>
                       <th>Last Login</th>
@@ -123,6 +141,18 @@ export function UsersPage() {
                         </td>
                         <td className="text-sm">{u.email}</td>
                         <td>
+                          <div className="flex flex-wrap gap-1">
+                            {(u.teams ?? []).map((t) => (
+                              <span key={t.id} className="badge badge-ghost badge-sm">
+                                {t.name}
+                              </span>
+                            ))}
+                            {(!u.teams || u.teams.length === 0) && (
+                              <span className="text-base-content/50 text-xs">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
                           {u.isSuperAdmin && (
                             <span className="badge badge-primary badge-sm">Super Admin</span>
                           )}
@@ -138,15 +168,27 @@ export function UsersPage() {
                           {u.lastLoginAt ? <TimeAgo date={u.lastLoginAt} /> : "Never"}
                         </td>
                         <td>
-                          {!u.isSuperAdmin && (
-                            <button
-                              type="button"
-                              className={`btn btn-xs ${u.disabled ? "btn-success" : "btn-warning"}`}
-                              onClick={() => toggleDisabled(u)}
-                            >
-                              {u.disabled ? "Enable" : "Disable"}
-                            </button>
-                          )}
+                          <div className="flex gap-1">
+                            {!u.isSuperAdmin && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-ghost"
+                                  onClick={() => setEditTeamsModal(u)}
+                                  title="Edit teams"
+                                >
+                                  Teams
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`btn btn-xs ${u.disabled ? "btn-success" : "btn-warning"}`}
+                                  onClick={() => toggleDisabled(u)}
+                                >
+                                  {u.disabled ? "Enable" : "Disable"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -215,7 +257,7 @@ export function UsersPage() {
                               <button
                                 type="button"
                                 className="btn btn-xs btn-success"
-                                onClick={() => handleApprove(r.id)}
+                                onClick={() => setApproveModal({ id: r.id, email: r.email })}
                               >
                                 Approve
                               </button>
@@ -248,6 +290,22 @@ export function UsersPage() {
           email={denyModal.email}
           onConfirm={(notes) => handleDeny(denyModal.id, notes)}
           onCancel={() => setDenyModal(null)}
+        />
+      )}
+      {approveModal && (
+        <ApproveModal
+          email={approveModal.email}
+          teams={teams}
+          onConfirm={(teamIds) => handleApprove(approveModal.id, teamIds)}
+          onCancel={() => setApproveModal(null)}
+        />
+      )}
+      {editTeamsModal && (
+        <EditTeamsModal
+          user={editTeamsModal}
+          teams={teams}
+          onConfirm={(teamIds) => handleEditTeams(editTeamsModal, teamIds)}
+          onCancel={() => setEditTeamsModal(null)}
         />
       )}
     </>
@@ -293,6 +351,155 @@ function SkeletonTable({ cols }: { cols: number }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ApproveModal({
+  email,
+  teams,
+  onConfirm,
+  onCancel,
+}: {
+  email: string;
+  teams: TeamRow[];
+  onConfirm: (teamIds: number[]) => void;
+  onCancel: () => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function toggle(id: number) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    await onConfirm(selectedIds);
+    setIsSubmitting(false);
+  }
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box">
+        <h3 className="font-bold text-lg">Approve Access Request</h3>
+        <p className="py-2 text-sm">
+          Approve access for <span className="font-semibold">{email}</span>?
+        </p>
+        <div className="form-control">
+          <fieldset className="flex flex-col gap-2">
+            <legend id="approve-teams-label" className="label-text">
+              Assign to teams (optional)
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {teams.map((t) => (
+                <label key={t.id} className="cursor-pointer flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={selectedIds.includes(t.id)}
+                    onChange={() => toggle(t.id)}
+                  />
+                  <span>{t.name}</span>
+                </label>
+              ))}
+              {teams.length === 0 && (
+                <span className="text-sm text-base-content/50">No teams exist yet</span>
+              )}
+            </div>
+          </fieldset>
+        </div>
+        <div className="modal-action">
+          <button type="button" className="btn" onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-success"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? <span className="loading loading-spinner loading-sm" /> : "Approve"}
+          </button>
+        </div>
+      </div>
+      <form method="dialog" className="modal-backdrop">
+        <button type="button" onClick={onCancel}>
+          close
+        </button>
+      </form>
+    </dialog>
+  );
+}
+
+function EditTeamsModal({
+  user,
+  teams,
+  onConfirm,
+  onCancel,
+}: {
+  user: UserRow;
+  teams: TeamRow[];
+  onConfirm: (teamIds: number[]) => void;
+  onCancel: () => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<number[]>((user.teams ?? []).map((t) => t.id));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function toggle(id: number) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    await onConfirm(selectedIds);
+    setIsSubmitting(false);
+  }
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box">
+        <h3 className="font-bold text-lg">Edit Teams</h3>
+        <p className="py-2 text-sm">
+          Assign teams for <span className="font-semibold">{user.name ?? user.email}</span>
+        </p>
+        <div className="form-control">
+          <div className="flex flex-wrap gap-2">
+            {teams.map((t) => (
+              <label key={t.id} className="cursor-pointer flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-sm"
+                  checked={selectedIds.includes(t.id)}
+                  onChange={() => toggle(t.id)}
+                />
+                <span>{t.name}</span>
+              </label>
+            ))}
+            {teams.length === 0 && (
+              <span className="text-sm text-base-content/50">No teams exist yet</span>
+            )}
+          </div>
+        </div>
+        <div className="modal-action">
+          <button type="button" className="btn" onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? <span className="loading loading-spinner loading-sm" /> : "Save"}
+          </button>
+        </div>
+      </div>
+      <form method="dialog" className="modal-backdrop">
+        <button type="button" onClick={onCancel}>
+          close
+        </button>
+      </form>
+    </dialog>
   );
 }
 

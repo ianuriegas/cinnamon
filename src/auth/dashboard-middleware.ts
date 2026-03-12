@@ -4,6 +4,7 @@ import { getCookie } from "hono/cookie";
 
 import { isAccessRequestsEnabled, isDashboardAuthEnabled } from "@/config/env.ts";
 import { db } from "@/db/index.ts";
+import { userTeams } from "@/db/schema/user-teams.ts";
 import { users } from "@/db/schema/users.ts";
 
 import { SESSION_COOKIE, verifySession } from "./dashboard-auth.ts";
@@ -12,6 +13,20 @@ function isAllowedForDisabledUser(path: string, method: string): boolean {
   if (path === "/access-requests/mine" && method === "GET") return true;
   if (path === "/access-requests" && method === "POST") return true;
   return false;
+}
+
+function isAllowedForNoTeamsUser(path: string, method: string): boolean {
+  if (path === "/access-requests/mine" && method === "GET") return true;
+  if (path === "/access-requests" && method === "POST") return true;
+  return false;
+}
+
+async function loadUserTeamIds(userId: number): Promise<number[]> {
+  const rows = await db
+    .select({ teamId: userTeams.teamId })
+    .from(userTeams)
+    .where(eq(userTeams.userId, userId));
+  return rows.map((r) => r.teamId);
 }
 
 export async function dashboardAuthMiddleware(c: Context, next: Next) {
@@ -40,12 +55,15 @@ export async function dashboardAuthMiddleware(c: Context, next: Next) {
         isSuperAdmin: false,
         disabled: true,
       });
+      c.set("userTeamIds", []);
       return next();
     }
     return c.json({ error: "Forbidden", accessRequestsEnabled: isAccessRequestsEnabled() }, 403);
   }
 
   c.set("user", dbUser);
+  const teamIds = await loadUserTeamIds(dbUser.id);
+  c.set("userTeamIds", teamIds);
 
   if (dbUser.disabled && !dbUser.isSuperAdmin) {
     const apiPath = c.req.path.replace(/^\/api\/dashboard/, "");
@@ -53,6 +71,13 @@ export async function dashboardAuthMiddleware(c: Context, next: Next) {
       return next();
     }
     return c.json({ error: "Forbidden", accessRequestsEnabled: isAccessRequestsEnabled() }, 403);
+  }
+
+  if (!dbUser.isSuperAdmin && teamIds.length === 0) {
+    const apiPath = c.req.path.replace(/^\/api\/dashboard/, "");
+    if (!isAllowedForNoTeamsUser(apiPath, c.req.method)) {
+      return c.json({ error: "no_teams" }, 403);
+    }
   }
 
   return next();

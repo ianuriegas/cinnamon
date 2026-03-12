@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
@@ -10,9 +10,11 @@ import { accessRequests } from "@/db/schema/access-requests.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
+import { userTeams } from "@/db/schema/user-teams.ts";
 import { users } from "@/db/schema/users.ts";
 import { JOB_STATUS } from "@/src/job-types.ts";
 import { generateApiKey } from "@/src/lib/api-key-utils.ts";
+import { isJobVisibleToAnyTeam } from "@/src/lib/team-utils.ts";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -21,6 +23,7 @@ interface DashboardApiDeps {
   config: CinnamonConfig;
   jobsQueue: import("bullmq").Queue;
   jobHandlers: Record<string, unknown>;
+  jobTeamIds: Map<string, number[]>;
 }
 
 function isShellResult(
@@ -53,10 +56,16 @@ type DashboardUser = {
 type DashboardEnv = {
   Variables: {
     user: DashboardUser;
+    userTeamIds: number[];
   };
 };
 
-export function createDashboardApi({ config, jobsQueue, jobHandlers }: DashboardApiDeps) {
+export function createDashboardApi({
+  config,
+  jobsQueue,
+  jobHandlers,
+  jobTeamIds,
+}: DashboardApiDeps) {
   const router = new Hono<DashboardEnv>();
 
   function parseRunsQuery(c: { req: { query(k: string): string | undefined } }) {
@@ -75,13 +84,37 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
         conditions.push(gte(jobsLog.createdAt, sinceDate));
       }
     }
+    return { limitParam, offsetParam, nameFilter, statusFilter, sinceFilter, conditions };
+  }
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
-    return { limitParam, offsetParam, nameFilter, statusFilter, sinceFilter, where };
+  function buildRunsWhere(
+    conditions: ReturnType<typeof parseRunsQuery>["conditions"],
+    user: DashboardUser,
+    userTeamIds: number[],
+  ) {
+    const all = [...conditions];
+    if (!user.isSuperAdmin) {
+      if (userTeamIds.length === 0) {
+        all.push(sql`1 = 0`); // No teams: return no rows (Phase 6 middleware blocks before this)
+      } else {
+        all.push(inArray(jobsLog.teamId, userTeamIds));
+      }
+    }
+    return all.length > 0 ? and(...all) : undefined;
+  }
+
+  function canAccessRun(
+    row: { teamId: number | null },
+    user: DashboardUser,
+    userTeamIds: number[],
+  ): boolean {
+    if (user.isSuperAdmin) return true;
+    if (row.teamId == null) return false;
+    return userTeamIds.includes(row.teamId);
   }
 
   async function fetchRuns(
-    where: ReturnType<typeof parseRunsQuery>["where"],
+    where: ReturnType<typeof buildRunsWhere>,
     limit: number,
     offset: number,
   ) {
@@ -99,11 +132,18 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
   }
 
   router.get("/runs", async (c) => {
-    const { limitParam, offsetParam, where } = parseRunsQuery(c);
+    const user = c.get("user");
+    const userTeamIds = c.get("userTeamIds");
+    const { limitParam, offsetParam, conditions } = parseRunsQuery(c);
+    const where = buildRunsWhere(conditions, user, userTeamIds);
 
     const [{ rows, total }, jobNameRows] = await Promise.all([
       fetchRuns(where, limitParam, offsetParam),
-      db.selectDistinct({ jobName: jobsLog.jobName }).from(jobsLog).orderBy(jobsLog.jobName),
+      db
+        .selectDistinct({ jobName: jobsLog.jobName })
+        .from(jobsLog)
+        .where(where ?? sql`true`)
+        .orderBy(jobsLog.jobName),
     ]);
 
     return c.json({
@@ -129,12 +169,18 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
   router.get("/runs/:id", async (c) => {
     const row = await findRunByParam(c.req.param("id"));
     if (!row) return c.json({ error: "Run not found" }, 404);
+    if (!canAccessRun(row, c.get("user"), c.get("userTeamIds"))) {
+      return c.json({ error: "Run not found" }, 404);
+    }
     return c.json({ data: row });
   });
 
   router.get("/runs/:id/raw", async (c) => {
     const row = await findRunByParam(c.req.param("id"));
     if (!row) return c.text("Run not found", 404);
+    if (!canAccessRun(row, c.get("user"), c.get("userTeamIds"))) {
+      return c.text("Run not found", 404);
+    }
 
     const parts: string[] = [];
     if (row.logs) parts.push(row.logs);
@@ -154,6 +200,9 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
   router.get("/runs/:id/stream", async (c) => {
     const row = await findRunByParam(c.req.param("id"));
     if (!row) return c.json({ error: "Run not found" }, 404);
+    if (!canAccessRun(row, c.get("user"), c.get("userTeamIds"))) {
+      return c.json({ error: "Run not found" }, 404);
+    }
 
     const isTerminal =
       row.status === JOB_STATUS.completed ||
@@ -254,6 +303,9 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
   router.post("/runs/:id/cancel", async (c) => {
     const row = await findRunByParam(c.req.param("id"));
     if (!row) return c.json({ error: "Run not found" }, 404);
+    if (!canAccessRun(row, c.get("user"), c.get("userTeamIds"))) {
+      return c.json({ error: "Run not found" }, 404);
+    }
 
     if (row.status === JOB_STATUS.queued) {
       try {
@@ -287,6 +339,13 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
   });
 
   router.get("/definitions", async (c) => {
+    const user = c.get("user");
+    const userTeamIds = c.get("userTeamIds");
+    const teamFilter =
+      !user.isSuperAdmin && userTeamIds.length > 0
+        ? inArray(jobsLog.teamId, userTeamIds)
+        : undefined;
+
     const lastRunSubquery = db
       .select({
         jobName: jobsLog.jobName,
@@ -297,6 +356,7 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
         ),
       })
       .from(jobsLog)
+      .where(teamFilter ?? sql`true`)
       .as("last_runs");
 
     const lastRuns = await db
@@ -310,7 +370,14 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
 
     const lastRunMap = new Map(lastRuns.map((r) => [r.jobName, r]));
 
-    const definitions = Object.entries(config.jobs).map(([name, def]) => ({
+    let jobEntries = Object.entries(config.jobs);
+    if (!user.isSuperAdmin) {
+      jobEntries = jobEntries.filter(([name]) =>
+        isJobVisibleToAnyTeam(name, userTeamIds, jobTeamIds),
+      );
+    }
+
+    const definitions = jobEntries.map(([name, def]) => ({
       name,
       command: def.command,
       script: def.script,
@@ -325,6 +392,9 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
   });
 
   router.get("/schedules", async (c) => {
+    const user = c.get("user");
+    const userTeamIds = c.get("userTeamIds");
+
     let schedulers: Array<{ name: string; pattern: string; next: number | null }> = [];
     try {
       const raw = await jobsQueue.getJobSchedulers(0, -1);
@@ -335,10 +405,18 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
       schedulers = [];
     }
 
+    if (!user.isSuperAdmin) {
+      schedulers = schedulers.filter((s) => isJobVisibleToAnyTeam(s.name, userTeamIds, jobTeamIds));
+    }
+
     const scheduledJobNames = schedulers.map((s) => s.name);
     let statsMap = new Map<string, { total: number; completed: number; failed: number }>();
 
     if (scheduledJobNames.length > 0) {
+      const conditions = [inArray(jobsLog.jobName, scheduledJobNames)];
+      if (!user.isSuperAdmin && userTeamIds.length > 0) {
+        conditions.push(inArray(jobsLog.teamId, userTeamIds));
+      }
       const statsRows = await db
         .select({
           jobName: jobsLog.jobName,
@@ -349,7 +427,7 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
           failed: sql<number>`count(*) filter (where ${jobsLog.status} = 'failed')`.mapWith(Number),
         })
         .from(jobsLog)
-        .where(sql`${jobsLog.jobName} in ${scheduledJobNames}`)
+        .where(and(...conditions))
         .groupBy(jobsLog.jobName);
 
       statsMap = new Map(statsRows.map((r) => [r.jobName, r]));
@@ -367,13 +445,30 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
 
   router.post("/trigger/:name", async (c) => {
     const name = c.req.param("name");
+    const user = c.get("user");
+    const userTeamIds = c.get("userTeamIds");
 
     if (!(name in jobHandlers)) {
       return c.json({ error: `Unknown job: ${name}` }, 400);
     }
 
+    if (!user.isSuperAdmin) {
+      if (!isJobVisibleToAnyTeam(name, userTeamIds, jobTeamIds)) {
+        return c.json({ error: `Unknown job: ${name}` }, 400);
+      }
+      if (userTeamIds.length === 0) {
+        return c.json({ error: "You must be assigned to a team to trigger jobs" }, 403);
+      }
+    }
+
+    const allowedTeams = jobTeamIds.get(name);
+    const teamId =
+      user.isSuperAdmin || !allowedTeams
+        ? null
+        : (userTeamIds.find((tid) => allowedTeams.includes(tid)) ?? userTeamIds[0]);
+
     try {
-      const job = await jobsQueue.add(name, {});
+      const job = await jobsQueue.add(name, { teamId });
       const jobId = String(job.id);
 
       await db
@@ -385,6 +480,7 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
           status: JOB_STATUS.queued,
           payload: {},
           error: false,
+          teamId,
         })
         .onConflictDoNothing({ target: jobsLog.jobId });
 
@@ -600,7 +696,64 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
 
   router.get("/users", async (c) => {
     const rows = await db.select().from(users).orderBy(desc(users.createdAt));
+    const utRows = await db
+      .select({
+        userId: userTeams.userId,
+        teamId: userTeams.teamId,
+        teamName: teams.name,
+        teamCreatedAt: teams.createdAt,
+      })
+      .from(userTeams)
+      .innerJoin(teams, eq(userTeams.teamId, teams.id));
+    const teamsByUser = new Map<number, Array<{ id: number; name: string; createdAt: Date }>>();
+    for (const r of utRows) {
+      const list = teamsByUser.get(r.userId) ?? [];
+      list.push({ id: r.teamId, name: r.teamName, createdAt: r.teamCreatedAt });
+      teamsByUser.set(r.userId, list);
+    }
+    const data = rows.map((u) => ({
+      ...u,
+      teams: teamsByUser.get(u.id) ?? [],
+    }));
+    return c.json({ data });
+  });
 
+  router.get("/users/:id/teams", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid user ID" }, 400);
+    }
+    const rows = await db
+      .select({ id: teams.id, name: teams.name, createdAt: teams.createdAt })
+      .from(userTeams)
+      .innerJoin(teams, eq(userTeams.teamId, teams.id))
+      .where(eq(userTeams.userId, id));
+    return c.json({ data: rows });
+  });
+
+  router.put("/users/:id/teams", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid user ID" }, 400);
+    }
+    const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!existing) return c.json({ error: "User not found" }, 404);
+    const body = await c.req.json<{ teamIds: number[] }>();
+    const teamIds = Array.isArray(body.teamIds)
+      ? (body.teamIds as number[]).filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    const uniqueIds = [...new Set(teamIds)];
+    await db.transaction(async (tx) => {
+      await tx.delete(userTeams).where(eq(userTeams.userId, id));
+      if (uniqueIds.length > 0) {
+        await tx.insert(userTeams).values(uniqueIds.map((teamId) => ({ userId: id, teamId })));
+      }
+    });
+    const rows = await db
+      .select({ id: teams.id, name: teams.name, createdAt: teams.createdAt })
+      .from(userTeams)
+      .innerJoin(teams, eq(userTeams.teamId, teams.id))
+      .where(eq(userTeams.userId, id));
     return c.json({ data: rows });
   });
 
@@ -696,6 +849,11 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
     }
 
     const currentUser = c.get("user");
+    const body = await c.req.json<{ teamIds?: number[] }>().catch(() => ({ teamIds: undefined }));
+    const teamIds = Array.isArray(body?.teamIds)
+      ? (body?.teamIds as number[]).filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    const uniqueTeamIds = [...new Set(teamIds)];
 
     const [request] = await db
       .select()
@@ -708,6 +866,7 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
       return c.json({ error: `Request already ${request.status}` }, 400);
     }
 
+    let approvedUserId: number | null = null;
     await db.transaction(async (tx) => {
       const [existingUser] = await tx
         .select()
@@ -720,15 +879,25 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
           .update(users)
           .set({ disabled: false, updatedAt: new Date() })
           .where(eq(users.id, existingUser.id));
+        approvedUserId = existingUser.id;
       } else if (request.googleSub) {
-        await tx.insert(users).values({
-          email: request.email.toLowerCase(),
-          name: request.name,
-          picture: request.picture,
-          googleSub: request.googleSub,
-          isSuperAdmin: false,
-          disabled: false,
-        });
+        const [inserted] = await tx
+          .insert(users)
+          .values({
+            email: request.email.toLowerCase(),
+            name: request.name,
+            picture: request.picture,
+            googleSub: request.googleSub,
+            isSuperAdmin: false,
+            disabled: false,
+          })
+          .returning({ id: users.id });
+        approvedUserId = inserted.id;
+      }
+
+      if (approvedUserId != null && uniqueTeamIds.length > 0) {
+        const uid = approvedUserId;
+        await tx.insert(userTeams).values(uniqueTeamIds.map((teamId) => ({ userId: uid, teamId })));
       }
 
       await tx

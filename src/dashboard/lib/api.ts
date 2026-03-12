@@ -116,6 +116,8 @@ export interface AuthUser {
   picture: string;
   isSuperAdmin: boolean;
   disabled: boolean;
+  teamIds?: number[];
+  teamNames?: string[];
 }
 
 export interface AuthResponse {
@@ -193,6 +195,35 @@ export async function updateUser(
   return patch(`/users/${id}`, updates);
 }
 
+export async function fetchUserTeams(userId: number): Promise<{ data: TeamRow[] }> {
+  return get(`/users/${userId}/teams`);
+}
+
+export async function updateUserTeams(
+  userId: number,
+  teamIds: number[],
+): Promise<{ data: TeamRow[] }> {
+  return fetch(`${BASE}/users/${userId}/teams`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ teamIds }),
+  }).then((res) => {
+    if (res.status === 401) {
+      window.location.href = "/auth/login";
+    }
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+  });
+}
+
+export async function approveAccessRequest(
+  id: number,
+  teamIds?: number[],
+): Promise<{ status: string }> {
+  return postJson(`/access-requests/${id}/approve`, teamIds != null ? { teamIds } : {});
+}
+
 // --- Access Requests ---
 
 export async function fetchAccessRequests(status?: string): Promise<{ data: AccessRequestRow[] }> {
@@ -206,10 +237,6 @@ export async function fetchMyAccessRequest(): Promise<{ data: AccessRequestRow |
 
 export async function submitAccessRequest(): Promise<{ data: AccessRequestRow }> {
   return post("/access-requests");
-}
-
-export async function approveAccessRequest(id: number): Promise<{ status: string }> {
-  return post(`/access-requests/${id}/approve`);
 }
 
 export async function denyAccessRequest(id: number, notes?: string): Promise<{ status: string }> {

@@ -89,7 +89,7 @@ app.use("/api/dashboard/access-requests", async (c, next) => {
   return next();
 });
 
-const dashboardApi = createDashboardApi({ config, jobsQueue, jobHandlers });
+const dashboardApi = createDashboardApi({ config, jobsQueue, jobHandlers, jobTeamIds });
 app.route("/api/dashboard", dashboardApi);
 
 app.use(

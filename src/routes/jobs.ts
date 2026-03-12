@@ -7,6 +7,7 @@ import { getJobOptions } from "@/config/dynamic-registry.ts";
 import { db } from "@/db/index.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import type { JobHandler } from "@/src/job-types.ts";
+import { isJobVisibleToTeam } from "@/src/lib/team-utils.ts";
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 20;
@@ -23,16 +24,6 @@ interface JobsRouterDeps {
   jobHandlers: Record<string, JobHandler>;
   config: CinnamonConfig;
   jobTeamIds: Map<string, number[]>;
-}
-
-function isJobVisibleToTeam(
-  jobName: string,
-  teamId: number,
-  jobTeamIds: Map<string, number[]>,
-): boolean {
-  const allowedTeams = jobTeamIds.get(jobName);
-  if (!allowedTeams) return true;
-  return allowedTeams.includes(teamId);
 }
 
 function truncateJson(value: unknown): unknown {

@@ -149,7 +149,7 @@ Jobs can send webhooks on success or failure. Cinnamon auto-detects Discord and 
 Cinnamon is designed to be added as a git submodule inside your project. This keeps your jobs and config in your repo while pulling in the framework.
 
 ```bash
-git submodule add https://github.com/<org>/cinnamon.git cinnamon
+git submodule add https://github.com/ianuriegas/cinnamon.git cinnamon
 ```
 
 ### Docker Compose merge

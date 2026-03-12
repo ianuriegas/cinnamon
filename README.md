@@ -189,15 +189,21 @@ Paste the output as `SESSION_SECRET` in `.env`.
 
 3. For local dev with `bun run dev` (Vite on port 5173), create `.env.local` with `BASE_URL=http://localhost:5173` so the OAuth callback and session cookie use the same origin. Keep `BASE_URL=http://localhost:3000` in `.env` for Docker/production. `.env.local` overrides `.env` when running locally and is gitignored.
 
-4. Optionally restrict access to specific emails:
+4. Set super-admin emails (these users get full dashboard access on first login):
 
 ```
-ALLOWED_EMAILS=you@gmail.com,teammate@gmail.com
+SUPER_ADMINS=you@gmail.com,teammate@gmail.com
+```
+
+5. Optionally enable access requests so non-admin users can request dashboard access:
+
+```
+ACCESS_REQUESTS_ENABLED=true
 ```
 
 When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open.
 
-See `.env.example` for all options.
+See [Access requests](docs/access-requests.md) for the full operator guide and `.env.example` for all options.
 
 ## Docs
 
@@ -206,6 +212,7 @@ See `.env.example` for all options.
 - [Writing scripts](docs/writing-scripts.md) -- output contract for shell scripts
 - [Migrations](docs/migrations.md) -- schema namespacing, dual migration pattern
 - [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI
+- [Access requests](docs/access-requests.md) -- self-service access request flow for the dashboard
 - [Deployment](docs/deploy.md) -- Docker Compose and CI/CD overview
 - [Postgres](docs/postgres.md) -- health checks, SQL shell, queries
 - [Redis](docs/redis.md) -- health checks, debugging

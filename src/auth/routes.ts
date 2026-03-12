@@ -1,7 +1,10 @@
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
-import { isEmailAllowed } from "@/config/env.ts";
+import { isAccessRequestsEnabled, isSuperAdmin } from "@/config/env.ts";
+import { db } from "@/db/index.ts";
+import { users } from "@/db/schema/users.ts";
 import {
   createSessionJwt,
   exchangeCodeForTokens,
@@ -22,10 +25,13 @@ function shouldUseSecureCookies(): boolean {
 function getRedirectUriFromRequest(c: {
   req: { header: (name: string) => string | undefined };
 }): string {
+  const baseUrl = process.env.BASE_URL;
+  if (baseUrl && (baseUrl.startsWith("http://") || baseUrl.startsWith("https://"))) {
+    return `${baseUrl.replace(/\/$/, "")}/auth/callback`;
+  }
   const host = c.req.header("host");
   if (!host) {
-    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
-    return `${baseUrl.replace(/\/$/, "")}/auth/callback`;
+    return `${(baseUrl ?? "http://localhost:3000").replace(/\/$/, "")}/auth/callback`;
   }
   const proto = c.req.header("x-forwarded-proto")?.toLowerCase() === "https" ? "https" : "http";
   return `${proto}://${host}/auth/callback`;
@@ -119,17 +125,85 @@ export function createAuthRoutes() {
     try {
       const redirectUri = getRedirectUriFromRequest(c);
       const tokens = await exchangeCodeForTokens(code, storedVerifier, redirectUri);
+      if (!tokens.id_token) throw new Error("No id_token in token response");
 
-      if (tokens.id_token) {
-        const claims = await verifyGoogleIdToken(tokens.id_token);
-        if (!isEmailAllowed(claims.email)) {
-          deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
-          deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
-          return c.redirect("/auth/login?error=access_denied");
+      const claims = await verifyGoogleIdToken(tokens.id_token);
+      const isSA = isSuperAdmin(claims.email);
+
+      let dbUser: {
+        id: number;
+        googleSub: string;
+        email: string;
+        name: string | null;
+        picture: string | null;
+        isSuperAdmin: boolean;
+      } | null = null;
+
+      if (isSA) {
+        const [u] = await db
+          .insert(users)
+          .values({
+            email: claims.email.toLowerCase(),
+            name: claims.name,
+            picture: claims.picture,
+            googleSub: claims.sub,
+            isSuperAdmin: true,
+            lastLoginAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: users.googleSub,
+            set: {
+              name: claims.name,
+              picture: claims.picture,
+              isSuperAdmin: true,
+              lastLoginAt: new Date(),
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        dbUser = u;
+      } else {
+        const [existing] = await db
+          .select()
+          .from(users)
+          .where(eq(users.googleSub, claims.sub))
+          .limit(1);
+        if (existing) {
+          if (!existing.disabled) {
+            await db
+              .update(users)
+              .set({
+                name: claims.name,
+                picture: claims.picture,
+                lastLoginAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, existing.id));
+          }
+          dbUser = { ...existing, name: claims.name, picture: claims.picture };
         }
       }
 
-      const jwt = await createSessionJwt(tokens);
+      const sessionUser = dbUser
+        ? {
+            id: dbUser.id,
+            googleSub: dbUser.googleSub,
+            email: dbUser.email,
+            name: dbUser.name ?? "",
+            picture: dbUser.picture ?? "",
+            isSuperAdmin: dbUser.isSuperAdmin,
+          }
+        : {
+            id: 0,
+            googleSub: claims.sub,
+            email: claims.email.toLowerCase(),
+            name: claims.name ?? "",
+            picture: claims.picture ?? "",
+            isSuperAdmin: false,
+          };
+
+      const jwt = await createSessionJwt(sessionUser);
       const secure = shouldUseSecureCookies();
       const sessionMaxAge = 60 * 60 * 24 * 7;
 
@@ -164,9 +238,19 @@ export function createAuthRoutes() {
     const session = await verifySession(token);
     if (!session) return c.json({ authenticated: false }, 401);
 
+    const [dbUser] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+
     return c.json({
       authenticated: true,
-      user: { email: session.email, name: session.name, picture: session.picture },
+      user: {
+        userId: dbUser?.id ?? session.userId,
+        email: dbUser?.email ?? session.email,
+        name: dbUser?.name ?? session.name,
+        picture: dbUser?.picture ?? session.picture,
+        isSuperAdmin: dbUser?.isSuperAdmin ?? session.isSuperAdmin,
+        disabled: dbUser ? dbUser.disabled : true,
+      },
+      accessRequestsEnabled: isAccessRequestsEnabled(),
     });
   });
 

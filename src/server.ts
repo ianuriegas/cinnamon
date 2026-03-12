@@ -12,6 +12,7 @@ import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 import { csrfMiddleware } from "@/src/auth/csrf.ts";
 import { dashboardAuthMiddleware } from "@/src/auth/dashboard-middleware.ts";
 import { createAuthRoutes } from "@/src/auth/routes.ts";
+import { superAdminMiddleware } from "@/src/auth/super-admin-middleware.ts";
 import { createDashboardApi } from "@/src/dashboard/api.ts";
 import { authMiddleware } from "@/src/middleware/auth.ts";
 import { createJobsRouter } from "@/src/routes/jobs.ts";
@@ -72,6 +73,21 @@ app.route("/v1", v1);
 // --- Dashboard API (auth + CSRF protected) ---
 app.use("/api/dashboard/*", dashboardAuthMiddleware);
 app.use("/api/dashboard/*", csrfMiddleware);
+
+// Admin-only routes require super-admin
+app.use("/api/dashboard/users/*", superAdminMiddleware);
+app.use("/api/dashboard/teams/*", superAdminMiddleware);
+app.use("/api/dashboard/api-keys/*", superAdminMiddleware);
+// Only approve/deny require super-admin; /access-requests/mine and POST do not.
+app.use("/api/dashboard/access-requests/:id/approve", superAdminMiddleware);
+app.use("/api/dashboard/access-requests/:id/deny", superAdminMiddleware);
+// GET /access-requests (list all) requires super-admin.
+app.use("/api/dashboard/access-requests", async (c, next) => {
+  if (c.req.method === "GET" && c.req.path === "/api/dashboard/access-requests") {
+    return superAdminMiddleware(c, next);
+  }
+  return next();
+});
 
 const dashboardApi = createDashboardApi({ config, jobsQueue, jobHandlers });
 app.route("/api/dashboard", dashboardApi);

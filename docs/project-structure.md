@@ -11,7 +11,7 @@ config/
   load-config.ts      Config loader with validation
 db/
   connection.ts       Shared Postgres pool
-  schema/             Drizzle table definitions (cinnamon.jobs_log, cinnamon.teams, cinnamon.api_keys)
+  schema/             Drizzle table definitions (cinnamon.jobs_log, cinnamon.teams, cinnamon.api_keys, cinnamon.users, cinnamon.access_requests)
   migrations/         Generated SQL migrations (single 0000 creates cinnamon schema + tables)
 jobs/
   _shared/            Shared utilities (isDirectExecution)
@@ -51,7 +51,8 @@ src/
   auth/               Dashboard OAuth (Google) and session management
     dashboard-auth.ts   PKCE, token exchange, JWT session create/verify
     routes.ts           /auth/login, /auth/google, /auth/callback, /auth/logout, /auth/me
-    dashboard-middleware.ts  Session cookie guard for /api/dashboard/*
+    dashboard-middleware.ts  Session cookie guard for /api/dashboard/* (with user DB lookup)
+    super-admin-middleware.ts  Restricts admin-only routes to super admins
     csrf.ts             Origin/Referer validation on mutating endpoints
   middleware/
     auth.ts           Bearer token auth middleware for Hono

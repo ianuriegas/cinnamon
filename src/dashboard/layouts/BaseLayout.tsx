@@ -11,6 +11,7 @@ const NAV_ITEMS = [
 ] as const;
 
 const ADMIN_ITEMS = [
+  { to: "/users", label: "Users" },
   { to: "/api-keys", label: "API Keys" },
   { to: "/teams", label: "Teams" },
 ] as const;
@@ -43,18 +44,20 @@ export function BaseLayout() {
                 </NavLink>
               </li>
             ))}
-            <NavDropdown label="Admin" isActive={isAdminActive}>
-              {ADMIN_ITEMS.map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    className={({ isActive }) => (isActive ? "menu-active" : "")}
-                  >
-                    {item.label}
-                  </NavLink>
-                </li>
-              ))}
-            </NavDropdown>
+            {user?.isSuperAdmin && (
+              <NavDropdown label="Admin" isActive={isAdminActive}>
+                {ADMIN_ITEMS.map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) => (isActive ? "menu-active" : "")}
+                    >
+                      {item.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </NavDropdown>
+            )}
           </ul>
           <button
             type="button"

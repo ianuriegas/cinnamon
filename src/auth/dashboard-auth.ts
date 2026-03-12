@@ -17,11 +17,16 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 const googleJwks = createRemoteJWKSet(GOOGLE_JWKS_URL);
 
-export interface SessionPayload {
+export interface GoogleClaims {
   sub: string;
   email: string;
   name: string;
   picture: string;
+}
+
+export interface SessionPayload extends GoogleClaims {
+  userId: number;
+  isSuperAdmin: boolean;
 }
 
 function requireAuthEnv() {
@@ -118,7 +123,7 @@ export async function exchangeCodeForTokens(
 // Session helpers
 // ---------------------------------------------------------------------------
 
-export async function verifyGoogleIdToken(idToken: string): Promise<SessionPayload> {
+export async function verifyGoogleIdToken(idToken: string): Promise<GoogleClaims> {
   const { googleClientId } = requireAuthEnv();
   const { payload } = await jwtVerify(idToken, googleJwks, {
     issuer: GOOGLE_ISSUER,
@@ -133,16 +138,28 @@ export async function verifyGoogleIdToken(idToken: string): Promise<SessionPaylo
   };
 }
 
-export async function createSessionJwt(tokens: TokenResponse): Promise<string> {
-  const { sessionSecret } = requireAuthEnv();
-  if (!tokens.id_token) throw new Error("No id_token in token response");
+export interface SessionUser {
+  id: number;
+  googleSub: string;
+  email: string;
+  name: string;
+  picture: string;
+  isSuperAdmin: boolean;
+}
 
-  const claims = await verifyGoogleIdToken(tokens.id_token);
+export async function createSessionJwt(user: SessionUser): Promise<string> {
+  const { sessionSecret } = requireAuthEnv();
   const secret = new TextEncoder().encode(sessionSecret);
 
-  return new SignJWT({ email: claims.email, name: claims.name, picture: claims.picture })
+  return new SignJWT({
+    email: user.email,
+    name: user.name,
+    picture: user.picture,
+    userId: user.id,
+    isSuperAdmin: user.isSuperAdmin,
+  })
     .setProtectedHeader({ alg: "HS256" })
-    .setSubject(claims.sub)
+    .setSubject(user.googleSub)
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE}s`)
     .sign(secret);
@@ -160,6 +177,8 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
       email: (payload.email as string) ?? "",
       name: (payload.name as string) ?? "",
       picture: (payload.picture as string) ?? "",
+      userId: (payload.userId as number) ?? 0,
+      isSuperAdmin: (payload.isSuperAdmin as boolean) ?? false,
     };
   } catch {
     return null;

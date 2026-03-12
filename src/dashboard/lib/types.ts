@@ -75,6 +75,31 @@ export interface ApiKeyRotateResponse extends ApiKeyCreateResponse {
   rotatedFromId: number;
 }
 
+export interface UserRow {
+  id: number;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  googleSub: string;
+  isSuperAdmin: boolean;
+  disabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface AccessRequestRow {
+  id: number;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  status: "pending" | "approved" | "denied";
+  requestedAt: string;
+  decidedBy: number | null;
+  decidedAt: string | null;
+  notes: string | null;
+}
+
 export interface ShellResult {
   stdout?: string;
   stderr?: string;

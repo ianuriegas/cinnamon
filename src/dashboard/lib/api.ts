@@ -1,4 +1,5 @@
 import type {
+  AccessRequestRow,
   ApiKeyCreateResponse,
   ApiKeyRotateResponse,
   ApiKeyRow,
@@ -8,6 +9,7 @@ import type {
   RunsFilters,
   ScheduleRow,
   TeamRow,
+  UserRow,
 } from "./types";
 
 const BASE = "/api/dashboard";
@@ -108,19 +110,30 @@ export function streamRunUrl(id: string): string {
 }
 
 export interface AuthUser {
+  userId: number;
   email: string;
   name: string;
   picture: string;
+  isSuperAdmin: boolean;
+  disabled: boolean;
 }
 
-export async function fetchAuthUser(): Promise<AuthUser | null> {
+export interface AuthResponse {
+  user: AuthUser | null;
+  accessRequestsEnabled: boolean;
+}
+
+export async function fetchAuthUser(): Promise<AuthResponse> {
   try {
     const res = await fetch("/auth/me", { credentials: "include" });
-    if (!res.ok) return null;
+    if (!res.ok) return { user: null, accessRequestsEnabled: false };
     const data = await res.json();
-    return data.authenticated ? data.user : null;
+    return {
+      user: data.authenticated ? data.user : null,
+      accessRequestsEnabled: data.accessRequestsEnabled ?? false,
+    };
   } catch {
-    return null;
+    return { user: null, accessRequestsEnabled: false };
   }
 }
 
@@ -165,4 +178,40 @@ export async function updateTeamName(id: number, name: string): Promise<{ data: 
 
 export async function deleteTeam(id: number): Promise<{ status: string }> {
   return del(`/teams/${id}`);
+}
+
+// --- Users ---
+
+export async function fetchUsers(): Promise<{ data: UserRow[] }> {
+  return get("/users");
+}
+
+export async function updateUser(
+  id: number,
+  updates: { disabled?: boolean },
+): Promise<{ data: UserRow }> {
+  return patch(`/users/${id}`, updates);
+}
+
+// --- Access Requests ---
+
+export async function fetchAccessRequests(status?: string): Promise<{ data: AccessRequestRow[] }> {
+  const qs = status ? `?status=${status}` : "";
+  return get(`/access-requests${qs}`);
+}
+
+export async function fetchMyAccessRequest(): Promise<{ data: AccessRequestRow | null }> {
+  return get("/access-requests/mine");
+}
+
+export async function submitAccessRequest(): Promise<{ data: AccessRequestRow }> {
+  return post("/access-requests");
+}
+
+export async function approveAccessRequest(id: number): Promise<{ status: string }> {
+  return post(`/access-requests/${id}/approve`);
+}
+
+export async function denyAccessRequest(id: number, notes?: string): Promise<{ status: string }> {
+  return postJson(`/access-requests/${id}/deny`, { notes });
 }

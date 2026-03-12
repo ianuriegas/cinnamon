@@ -3,11 +3,14 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
 import type { CinnamonConfig } from "@/config/define-config.ts";
+import { isAccessRequestsEnabled } from "@/config/env.ts";
 import { CHANNEL_PREFIX, createRedisSubscriber, getRedisPublisher } from "@/config/redis-pubsub.ts";
 import { db } from "@/db/index.ts";
+import { accessRequests } from "@/db/schema/access-requests.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
 import { teams } from "@/db/schema/teams.ts";
+import { users } from "@/db/schema/users.ts";
 import { JOB_STATUS } from "@/src/job-types.ts";
 import { generateApiKey } from "@/src/lib/api-key-utils.ts";
 
@@ -37,8 +40,24 @@ function formatJson(value: unknown): string {
   }
 }
 
+type DashboardUser = {
+  id: number;
+  email: string;
+  googleSub?: string;
+  name: string | null;
+  picture: string | null;
+  isSuperAdmin: boolean;
+  disabled: boolean;
+};
+
+type DashboardEnv = {
+  Variables: {
+    user: DashboardUser;
+  };
+};
+
 export function createDashboardApi({ config, jobsQueue, jobHandlers }: DashboardApiDeps) {
-  const router = new Hono();
+  const router = new Hono<DashboardEnv>();
 
   function parseRunsQuery(c: { req: { query(k: string): string | undefined } }) {
     const limitParam = Math.min(Number(c.req.query("limit")) || DEFAULT_LIMIT, MAX_LIMIT);
@@ -575,6 +594,188 @@ export function createDashboardApi({ config, jobsQueue, jobHandlers }: Dashboard
 
     if (!updated) return c.json({ error: "API key not found" }, 404);
     return c.json({ status: "revoked" });
+  });
+
+  // --- Users management (super-admin only via middleware) ---
+
+  router.get("/users", async (c) => {
+    const rows = await db.select().from(users).orderBy(desc(users.createdAt));
+
+    return c.json({ data: rows });
+  });
+
+  router.patch("/users/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid user ID" }, 400);
+    }
+
+    const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!existing) return c.json({ error: "User not found" }, 404);
+
+    if (existing.isSuperAdmin) {
+      return c.json({ error: "Cannot modify super admins; manage via SUPER_ADMINS env" }, 400);
+    }
+
+    const body = await c.req.json<{ disabled?: boolean }>();
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (typeof body.disabled === "boolean") updates.disabled = body.disabled;
+
+    const [updated] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    return c.json({ data: updated });
+  });
+
+  // --- Access requests ---
+
+  // Authenticated user checks their own request (no super-admin required)
+  router.get("/access-requests/mine", async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ data: null });
+
+    const [request] = await db
+      .select()
+      .from(accessRequests)
+      .where(eq(accessRequests.email, user.email))
+      .orderBy(desc(accessRequests.requestedAt))
+      .limit(1);
+
+    return c.json({ data: request ?? null });
+  });
+
+  // Authenticated user submits a request (no super-admin required)
+  router.post("/access-requests", async (c) => {
+    if (!isAccessRequestsEnabled()) {
+      return c.json({ error: "Access requests are not enabled" }, 403);
+    }
+
+    const user = c.get("user");
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+    const existing = await db
+      .select({ id: accessRequests.id })
+      .from(accessRequests)
+      .where(and(eq(accessRequests.email, user.email), eq(accessRequests.status, "pending")))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return c.json({ error: "You already have a pending request" }, 409);
+    }
+
+    const [inserted] = await db
+      .insert(accessRequests)
+      .values({
+        email: user.email,
+        googleSub: user.googleSub ?? null,
+        name: user.name ?? null,
+        picture: user.picture ?? null,
+      })
+      .returning();
+
+    return c.json({ data: inserted });
+  });
+
+  // Super-admin: list all access requests (filtered by status)
+  router.get("/access-requests", async (c) => {
+    const statusFilter = c.req.query("status");
+    const conditions = statusFilter ? eq(accessRequests.status, statusFilter) : undefined;
+
+    const rows = await db
+      .select()
+      .from(accessRequests)
+      .where(conditions)
+      .orderBy(desc(accessRequests.requestedAt));
+
+    return c.json({ data: rows });
+  });
+
+  // Super-admin: approve request
+  router.post("/access-requests/:id/approve", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid request ID" }, 400);
+    }
+
+    const currentUser = c.get("user");
+
+    const [request] = await db
+      .select()
+      .from(accessRequests)
+      .where(eq(accessRequests.id, id))
+      .limit(1);
+
+    if (!request) return c.json({ error: "Request not found" }, 404);
+    if (request.status !== "pending") {
+      return c.json({ error: `Request already ${request.status}` }, 400);
+    }
+
+    await db.transaction(async (tx) => {
+      const [existingUser] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.email, request.email))
+        .limit(1);
+
+      if (existingUser) {
+        await tx
+          .update(users)
+          .set({ disabled: false, updatedAt: new Date() })
+          .where(eq(users.id, existingUser.id));
+      } else if (request.googleSub) {
+        await tx.insert(users).values({
+          email: request.email.toLowerCase(),
+          name: request.name,
+          picture: request.picture,
+          googleSub: request.googleSub,
+          isSuperAdmin: false,
+          disabled: false,
+        });
+      }
+
+      await tx
+        .update(accessRequests)
+        .set({
+          status: "approved",
+          decidedBy: currentUser?.id ?? null,
+          decidedAt: new Date(),
+        })
+        .where(eq(accessRequests.id, id));
+    });
+
+    return c.json({ status: "approved" });
+  });
+
+  // Super-admin: deny request
+  router.post("/access-requests/:id/deny", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Invalid request ID" }, 400);
+    }
+
+    const currentUser = c.get("user");
+    const body = await c.req.json<{ notes?: string }>().catch(() => ({ notes: undefined }));
+
+    const [request] = await db
+      .select()
+      .from(accessRequests)
+      .where(eq(accessRequests.id, id))
+      .limit(1);
+
+    if (!request) return c.json({ error: "Request not found" }, 404);
+    if (request.status !== "pending") {
+      return c.json({ error: `Request already ${request.status}` }, 400);
+    }
+
+    await db
+      .update(accessRequests)
+      .set({
+        status: "denied",
+        decidedBy: currentUser?.id ?? null,
+        decidedAt: new Date(),
+        notes: body.notes?.trim() || null,
+      })
+      .where(eq(accessRequests.id, id));
+
+    return c.json({ status: "denied" });
   });
 
   return router;

@@ -7,6 +7,7 @@
 
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
+import { UnrecoverableError } from "bullmq";
 import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -87,7 +88,7 @@ export async function runShellJob(
   const { signal, onChunk, onProcSpawn } = options ?? {};
 
   if (signal?.aborted) {
-    throw Object.assign(new Error("Job cancelled before execution"), {
+    throw Object.assign(new UnrecoverableError("Job cancelled"), {
       result: { stdout: "", stderr: "", exitCode: 1 } satisfies ShellJobResult,
     });
   }
@@ -152,7 +153,7 @@ export async function runShellJob(
       const result: ShellJobResult = { stdout, stderr, exitCode };
 
       if (cancelled) {
-        reject(Object.assign(new Error("Job cancelled"), { result }));
+        reject(Object.assign(new UnrecoverableError("Job cancelled"), { result }));
         return;
       }
 

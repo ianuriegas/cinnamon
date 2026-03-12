@@ -7,7 +7,7 @@ import { useTimezoneContext } from "../contexts/TimezoneContext";
 import { type LogLine, useLogStream } from "../hooks/useLogStream";
 import { usePolling } from "../hooks/usePolling";
 import { formatInTimezone } from "../hooks/useTimezone";
-import { cancelRun, fetchRun } from "../lib/api";
+import { cancelRun, fetchRun, retryRun } from "../lib/api";
 import type { RunRow } from "../lib/types";
 import { formatJson, isShellResult } from "../lib/types";
 
@@ -144,6 +144,33 @@ function CancelButton({ jobId, onCancelled }: { jobId: string; onCancelled: () =
   );
 }
 
+function RetryButton({ jobId, onRetried }: { jobId: string; onRetried: () => void }) {
+  const [retrying, setRetrying] = useState(false);
+
+  const handleRetry = useCallback(async () => {
+    setRetrying(true);
+    try {
+      await retryRun(jobId);
+      onRetried();
+    } catch {
+      // polling will pick up the actual status
+    } finally {
+      setRetrying(false);
+    }
+  }, [jobId, onRetried]);
+
+  return (
+    <button
+      type="button"
+      className="btn btn-warning btn-sm gap-1"
+      onClick={handleRetry}
+      disabled={retrying}
+    >
+      {retrying ? <span className="loading loading-spinner loading-xs" /> : "Retry"}
+    </button>
+  );
+}
+
 export function RunDetailPage() {
   const { timezone } = useTimezoneContext();
   const { id } = useParams<{ id: string }>();
@@ -165,6 +192,7 @@ export function RunDetailPage() {
   }, [load]);
 
   const isActive = run?.status === "processing" || run?.status === "queued";
+  const isRetryable = ["failed", "cancelled", "interrupted"].includes(run?.status ?? "");
   usePolling(load, 2000, isActive);
 
   const isProcessing = run?.status === "processing";
@@ -219,6 +247,7 @@ export function RunDetailPage() {
         )}
         {isActive && <span className="loading loading-spinner loading-xs text-warning" />}
         {isActive && <CancelButton jobId={run.jobId} onCancelled={load} />}
+        {isRetryable && <RetryButton jobId={run.jobId} onRetried={load} />}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

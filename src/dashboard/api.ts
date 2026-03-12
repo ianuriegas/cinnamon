@@ -339,6 +339,52 @@ export function createDashboardApi({
     return c.json({ error: `Cannot cancel job with status '${row.status}'` }, 400);
   });
 
+  const RETRYABLE_STATUSES = [
+    JOB_STATUS.failed,
+    JOB_STATUS.cancelled,
+    JOB_STATUS.interrupted,
+  ] as const;
+
+  router.post("/runs/:id/retry", async (c) => {
+    const row = await findRunByParam(c.req.param("id"));
+    if (!row) return c.json({ error: "Run not found" }, 404);
+    if (!canAccessRun(row, c.get("user"), c.get("userTeamIds"))) {
+      return c.json({ error: "Run not found" }, 404);
+    }
+
+    if (!RETRYABLE_STATUSES.includes(row.status as (typeof RETRYABLE_STATUSES)[number])) {
+      return c.json({ error: `Cannot retry job with status '${row.status}'` }, 400);
+    }
+
+    try {
+      const bullJob = await jobsQueue.getJob(row.jobId);
+      if (!bullJob) {
+        return c.json({ error: "Job no longer exists in queue (cannot retry)" }, 404);
+      }
+      await bullJob.retry();
+    } catch (err) {
+      console.error(`[dashboard] Retry failed for job ${row.jobId}:`, err);
+      return c.json({ error: "Failed to retry job" }, 500);
+    }
+
+    // Clear Redis log buffer so live stream gets fresh logs from the retried run
+    const bufKey = `${CHANNEL_PREFIX.logbuf}${row.jobId}`;
+    await getRedisPublisher().del(bufKey);
+
+    await db
+      .update(jobsLog)
+      .set({
+        status: JOB_STATUS.queued,
+        startedAt: null,
+        finishedAt: null,
+        error: false,
+        result: null,
+      })
+      .where(eq(jobsLog.jobId, row.jobId));
+
+    return c.json({ status: "retrying" });
+  });
+
   router.get("/definitions", async (c) => {
     const user = c.get("user");
     const userTeamIds = c.get("userTeamIds");

@@ -105,6 +105,10 @@ export async function cancelRun(id: string): Promise<{ status?: string; error?: 
   return post(`/runs/${id}/cancel`);
 }
 
+export async function retryRun(id: string): Promise<{ status?: string; error?: string }> {
+  return post(`/runs/${id}/retry`);
+}
+
 export function streamRunUrl(id: string): string {
   return `${BASE}/runs/${id}/stream`;
 }

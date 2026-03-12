@@ -86,7 +86,7 @@ List recent job runs for your team, sorted by `created_at` descending. Payload a
 | `limit`  | 20      | Number of results (max 100)              |
 | `offset` | 0       | Pagination offset                        |
 | `name`   | --      | Filter by job name                       |
-| `status` | --      | Filter by status (queued, processing, completed, failed, cancelled) |
+| `status` | --      | Filter by status (queued, processing, completed, failed, cancelled, interrupted) |
 | `since`  | --      | ISO timestamp; only runs created after this time |
 
 **Response (200):**
@@ -294,6 +294,7 @@ When `SESSION_SECRET` and Google OAuth credentials are configured, all `/api/das
 | GET    | `/api/dashboard/runs/:id/raw`     | Raw logs as `text/plain`                      |
 | GET    | `/api/dashboard/runs/:id/stream`  | SSE stream of live logs for a run             |
 | POST   | `/api/dashboard/runs/:id/cancel`  | Cancel a queued or processing run             |
+| POST   | `/api/dashboard/runs/:id/retry`   | Retry a failed, cancelled, or interrupted run |
 | GET    | `/api/dashboard/definitions`      | List job definitions from config              |
 | GET    | `/api/dashboard/schedules`        | List active schedules with stats              |
 | POST   | `/api/dashboard/trigger/:name`    | Trigger a job by name                         |
@@ -304,7 +305,7 @@ Server-Sent Events stream for real-time log output. Emits three event types:
 
 - `log` — console log lines captured from the job handler
 - `chunk` — stdout/stderr chunks from the shell subprocess (includes `stream: "stdout" | "stderr"`)
-- `done` — terminal event with final status (`completed`, `failed`, `cancelled`)
+- `done` — terminal event with final status (`completed`, `failed`, `cancelled`, `interrupted`)
 
 If the job is already finished, all stored output is sent as events and the stream closes immediately.
 
@@ -326,3 +327,7 @@ or for processing jobs (cancel is asynchronous):
 ```json
 { "status": "cancelling" }
 ```
+
+### POST /api/dashboard/runs/:id/retry
+
+Re-queue a job that has status `failed`, `cancelled`, or `interrupted`. The job is moved back to BullMQ's waiting queue and will be picked up by a worker. Returns `{ "status": "retrying" }` on success. Returns 400 if the job's status is not retryable; returns 404 if the job no longer exists in the queue.

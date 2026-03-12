@@ -35,7 +35,6 @@ export function statusColor(status: string): string {
 }
 
 function stripAnsi(s: string): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI escape sequences requires matching \x1b
   return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
 

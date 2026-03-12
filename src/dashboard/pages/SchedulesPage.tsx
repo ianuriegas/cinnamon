@@ -63,7 +63,6 @@ export function SchedulesPage() {
                 </thead>
                 <tbody>
                   {Array.from({ length: 4 }, (_, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
                     <tr key={i}>
                       <td>
                         <div className="skeleton h-4 w-28" />

@@ -86,10 +86,8 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
       aria-hidden={!open}
       style={!open ? { pointerEvents: "none" } : undefined}
     >
-      {/* biome-ignore lint/a11y/useSemanticElements: modal content needs stopPropagation to prevent backdrop close */}
-      <div
+      <section
         className="modal-box"
-        role="region"
         aria-label="Settings"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
@@ -103,7 +101,7 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
             Done
           </button>
         </div>
-      </div>
+      </section>
       <button
         type="button"
         className="modal-backdrop"

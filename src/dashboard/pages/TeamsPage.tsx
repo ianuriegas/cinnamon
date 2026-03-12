@@ -1,4 +1,8 @@
+import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
+
+type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
+
 import { TimeAgo } from "../components/TimeAgo";
 import { usePolling } from "../hooks/usePolling";
 import { createTeam, deleteTeam, fetchTeams, updateTeamName } from "../lib/api";
@@ -211,7 +215,6 @@ function SkeletonTable() {
         </thead>
         <tbody>
           {Array.from({ length: 3 }, (_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
             <tr key={i}>
               <td>
                 <div className="skeleton h-4 w-36" />
@@ -235,7 +238,7 @@ function CreateTeamModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormSubmitEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setIsSubmitting(true);

@@ -9,9 +9,7 @@ export default defineConfig({
       // schedule: "0 * * * *",  // uncomment to run hourly
       description: "Demo Python script",
       notifications: {
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
         on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: ${VAR} interpolation
         on_success: [{ url: "${DISCORD_WEBHOOK_URL}" }],
       },
     },

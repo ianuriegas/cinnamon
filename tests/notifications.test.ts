@@ -175,17 +175,14 @@ describe("formatDuration", () => {
 // --- URL interpolation ---
 
 describe("interpolateUrl", () => {
-  // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
   test("resolves ${VAR} from process.env", () => {
     process.env.TEST_WEBHOOK = "https://discord.com/api/webhooks/123/abc";
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
     assert.equal(interpolateUrl("${TEST_WEBHOOK}"), "https://discord.com/api/webhooks/123/abc");
     delete process.env.TEST_WEBHOOK;
   });
 
   test("returns empty string for unresolved variable", () => {
     delete process.env.NONEXISTENT_WEBHOOK_VAR;
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
     assert.equal(interpolateUrl("${NONEXISTENT_WEBHOOK_VAR}"), "");
   });
 
@@ -196,7 +193,6 @@ describe("interpolateUrl", () => {
   test("resolves variable embedded in a URL", () => {
     process.env.WEBHOOK_TOKEN = "secret123";
     assert.equal(
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
       interpolateUrl("https://example.com/${WEBHOOK_TOKEN}"),
       "https://example.com/secret123",
     );

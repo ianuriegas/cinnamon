@@ -76,7 +76,7 @@ src/
       api.ts          Client-side fetch wrapper for /api/dashboard/*
       types.ts        Shared TypeScript types
 vite.config.js        Vite config (React plugin, Tailwind, API proxy)
-tsconfig.dashboard.json  TypeScript config for React JSX (separate from server)
+src/dashboard/tsconfig.json  TypeScript config for React JSX (separate from server)
 tests/                Unit and integration tests
 docs/                 Documentation
 ```

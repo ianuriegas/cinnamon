@@ -1,4 +1,8 @@
+import type { ComponentProps } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
+
 import { TimeAgo } from "../components/TimeAgo";
 import { usePolling } from "../hooks/usePolling";
 import {
@@ -291,7 +295,6 @@ function SkeletonTable() {
         </thead>
         <tbody>
           {Array.from({ length: 4 }, (_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
             <tr key={i}>
               <td>
                 <div className="skeleton h-4 w-28" />
@@ -344,7 +347,7 @@ function CreateKeyModal({
     });
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormSubmitEvent) {
     e.preventDefault();
     if (!label.trim() || !selectedTeamId) return;
     setIsSubmitting(true);

@@ -5,8 +5,9 @@ import { App } from "./App";
 import { TimezoneProvider } from "./contexts/TimezoneContext";
 import "./styles.css";
 
-// biome-ignore lint/style/noNonNullAssertion: root element is guaranteed in index.html
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root");
+if (!root) throw new Error("Missing #root element");
+createRoot(root).render(
   <StrictMode>
     <BrowserRouter basename="/dashboard">
       <TimezoneProvider>

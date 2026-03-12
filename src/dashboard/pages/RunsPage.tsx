@@ -130,7 +130,6 @@ export function RunsPage() {
                 </thead>
                 <tbody>
                   {Array.from({ length: 8 }, (_, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
                     <tr key={i}>
                       <td>
                         <div className="skeleton h-4 w-32" />

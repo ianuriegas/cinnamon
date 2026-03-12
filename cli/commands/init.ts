@@ -36,7 +36,6 @@ function readSecret(prompt: string): Promise<string> {
     };
 
     function onData(chunk: string) {
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping bracketed paste escape sequences
       const cleaned = chunk.replace(/\x1b\[200~/g, "").replace(/\x1b\[201~/g, "");
 
       for (const ch of cleaned) {

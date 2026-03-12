@@ -14,5 +14,37 @@
   },
   "files": {
     "includes": ["**/*.ts", "**/*.tsx"]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/dashboard/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["cinnamon.config.ts", "tests/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noTemplateCurlyInString": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["cli/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noControlCharactersInRegex": "off"
+          }
+        }
+      }
+    }
+  ]
 }

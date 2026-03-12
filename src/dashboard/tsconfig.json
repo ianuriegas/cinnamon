@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -14,6 +18,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["vite/client"]
   },
-  "include": ["src/dashboard/**/*.ts", "src/dashboard/**/*.tsx"],
-  "exclude": ["src/dashboard/api.ts"]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["./api.ts"]
 }

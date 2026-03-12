@@ -5,10 +5,8 @@ import { buildRegistry, getJobOptions, interpolateEnv } from "@/config/dynamic-r
 import { runShellJob } from "@/jobs/shell/index.ts";
 
 describe("interpolateEnv", () => {
-  // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
   test("replaces ${VAR} with process.env value", () => {
     process.env.TEST_INTERP_VAR = "resolved-value";
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
     const result = interpolateEnv({ KEY: "${TEST_INTERP_VAR}" });
     assert.equal(result.KEY, "resolved-value");
     delete process.env.TEST_INTERP_VAR;
@@ -17,7 +15,6 @@ describe("interpolateEnv", () => {
   test("replaces multiple variables in one value", () => {
     process.env.PART_A = "hello";
     process.env.PART_B = "world";
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
     const result = interpolateEnv({ GREETING: "${PART_A}-${PART_B}" });
     assert.equal(result.GREETING, "hello-world");
     delete process.env.PART_A;
@@ -26,7 +23,6 @@ describe("interpolateEnv", () => {
 
   test("unresolved variables become empty strings", () => {
     delete process.env.DOES_NOT_EXIST_XYZ;
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
     const result = interpolateEnv({ KEY: "prefix-${DOES_NOT_EXIST_XYZ}-suffix" });
     assert.equal(result.KEY, "prefix--suffix");
   });
@@ -168,7 +164,6 @@ describe("config handler threads env and cwd", () => {
         "interp-test": {
           command: "printenv",
           args: ["RESOLVED"],
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: testing ${VAR} interpolation
           env: { RESOLVED: "${CINNAMON_HOST_TEST}" },
         },
       },

@@ -29,7 +29,6 @@ export function DefinitionsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {isLoading
           ? Array.from({ length: 6 }, (_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
               <div key={i} className="card bg-base-100 shadow-sm">
                 <div className="card-body">
                   <div className="flex justify-between items-start">

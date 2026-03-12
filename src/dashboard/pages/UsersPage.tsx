@@ -329,7 +329,6 @@ function SkeletonTable({ cols }: { cols: number }) {
         <thead>
           <tr>
             {Array.from({ length: cols }, (_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
               <th key={i}>
                 <div className="skeleton h-4 w-20" />
               </th>
@@ -338,10 +337,8 @@ function SkeletonTable({ cols }: { cols: number }) {
         </thead>
         <tbody>
           {Array.from({ length: 3 }, (_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
             <tr key={i}>
               {Array.from({ length: cols }, (_, j) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
                 <td key={j}>
                   <div className="skeleton h-4 w-24" />
                 </td>

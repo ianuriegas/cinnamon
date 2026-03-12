@@ -95,7 +95,7 @@ export function RunsPage() {
           onChange={(e) => updateFilter("status", e.target.value)}
         >
           <option value="">All statuses</option>
-          {["queued", "processing", "completed", "failed", "cancelled"].map((s) => (
+          {["queued", "processing", "completed", "failed", "cancelled", "interrupted"].map((s) => (
             <option key={s} value={s}>
               {s}
             </option>

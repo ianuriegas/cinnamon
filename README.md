@@ -214,6 +214,7 @@ See [Access requests](docs/access-requests.md) for the full operator guide and `
 - [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI
 - [Access requests](docs/access-requests.md) -- self-service access request flow for the dashboard
 - [Deployment](docs/deploy.md) -- Docker Compose and CI/CD overview
+- [Resilience](docs/resilience.md) -- zombie cleanup and worker self-healing
 - [Postgres](docs/postgres.md) -- health checks, SQL shell, queries
 - [Redis](docs/redis.md) -- health checks, debugging
 - [Tests](docs/tests.md) -- test coverage and details

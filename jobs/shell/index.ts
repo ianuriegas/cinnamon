@@ -5,7 +5,9 @@
  * Example: bun run jobs/shell/index.ts python3 ./jobs/shell/scripts/hello.py
  */
 
+import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
+import { UnrecoverableError } from "bullmq";
 import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -37,6 +39,8 @@ export interface ShellJobResult {
 export interface ShellJobOptions {
   signal?: AbortSignal;
   onChunk?: (stream: "stdout" | "stderr", data: string) => void;
+  /** Called when the child process is spawned, for zombie cleanup (register/kill on shutdown). */
+  onProcSpawn?: (proc: ChildProcess) => void;
 }
 
 function validatePayload(payload: Record<string, unknown>): Required<ShellJobPayload> {
@@ -81,10 +85,10 @@ export async function runShellJob(
   options?: ShellJobOptions,
 ): Promise<ShellJobResult> {
   const { command, args, timeoutMs, parseJsonOutput, env, cwd } = validatePayload(payload);
-  const { signal, onChunk } = options ?? {};
+  const { signal, onChunk, onProcSpawn } = options ?? {};
 
   if (signal?.aborted) {
-    throw Object.assign(new Error("Job cancelled before execution"), {
+    throw Object.assign(new UnrecoverableError("Job cancelled"), {
       result: { stdout: "", stderr: "", exitCode: 1 } satisfies ShellJobResult,
     });
   }
@@ -97,6 +101,8 @@ export async function runShellJob(
       env: env ? { ...process.env, ...env } : undefined,
       cwd: cwd || undefined,
     });
+
+    onProcSpawn?.(proc);
 
     let stdout = "";
     let stderr = "";
@@ -147,7 +153,7 @@ export async function runShellJob(
       const result: ShellJobResult = { stdout, stderr, exitCode };
 
       if (cancelled) {
-        reject(Object.assign(new Error("Job cancelled"), { result }));
+        reject(Object.assign(new UnrecoverableError("Job cancelled"), { result }));
         return;
       }
 

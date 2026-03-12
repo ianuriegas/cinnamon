@@ -1,5 +1,6 @@
+import type { ChildProcess } from "node:child_process";
 import { type Job, Worker } from "bullmq";
-import { eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 
 import { getJobHandlers } from "@/config/dynamic-registry.ts";
 import { getRedisConnection } from "@/config/env.ts";
@@ -21,7 +22,35 @@ import { jobsQueueName } from "./queue.ts";
 const jobHandlers = await getJobHandlers();
 const config = await loadConfig();
 
+const STUCK_THRESHOLD_MS = 60_000;
+
+async function recoverStuckJobs(): Promise<void> {
+  try {
+    const threshold = new Date(Date.now() - STUCK_THRESHOLD_MS);
+    const updated = await db
+      .update(jobsLog)
+      .set({
+        status: JOB_STATUS.interrupted,
+        error: true,
+        result: { message: "Worker restarted; job was interrupted" },
+        finishedAt: new Date(),
+      })
+      .where(and(eq(jobsLog.status, JOB_STATUS.processing), lt(jobsLog.startedAt, threshold)))
+      .returning({ jobId: jobsLog.jobId });
+
+    const count = updated.length;
+    if (count > 0) {
+      console.log(`[worker] Recovered ${count} stuck job(s) → interrupted`);
+    }
+  } catch (err) {
+    console.error("[worker] Failed to recover stuck jobs:", err);
+  }
+}
+
+await recoverStuckJobs();
+
 const activeJobs = new Map<string, AbortController>();
+const procRegistry = new Map<string, ChildProcess>();
 
 function publishLogEvent(jobId: string, event: Record<string, unknown>) {
   try {
@@ -146,6 +175,12 @@ export const worker = new Worker<JobData>(
         onChunk: (stream, data) => {
           if (jobId) publishLogEvent(jobId, { type: "chunk", stream, text: data });
         },
+        onProcSpawn: jobId
+          ? (proc) => {
+              procRegistry.set(jobId, proc);
+              proc.once("close", () => procRegistry.delete(jobId));
+            }
+          : undefined,
       };
 
       const { result, logs } = await captureConsoleLogs(() => handler(job.data, shellOptions), {
@@ -159,10 +194,18 @@ export const worker = new Worker<JobData>(
       }
       return result;
     } finally {
-      if (jobId) activeJobs.delete(jobId);
+      if (jobId) {
+        activeJobs.delete(jobId);
+        procRegistry.delete(jobId);
+      }
     }
   },
-  { connection: getRedisConnection(), concurrency: 5 },
+  {
+    connection: getRedisConnection(),
+    concurrency: 5,
+    lockDuration: 30_000,
+    stalledInterval: 15_000,
+  },
 );
 
 worker.on("completed", async (job, result) => {
@@ -244,7 +287,40 @@ cancelSub.on("pmessage", (_pattern: string, channel: string, _message: string) =
   }
 });
 
+const SHUTDOWN_KILL_GRACE_MS = 4_000;
+
 const shutdown = async () => {
+  console.log("[worker] Shutting down...");
+
+  for (const ac of activeJobs.values()) {
+    ac.abort();
+  }
+
+  const procs = Array.from(procRegistry.entries());
+  if (procs.length > 0) {
+    console.log(`[worker] Killing ${procs.length} active child process(es)...`);
+    for (const [jobId, proc] of procs) {
+      try {
+        if (proc.pid && !proc.killed) {
+          proc.kill("SIGTERM");
+        }
+      } catch {
+        // Process may have already exited
+      }
+      procRegistry.delete(jobId);
+    }
+    await new Promise((r) => setTimeout(r, SHUTDOWN_KILL_GRACE_MS));
+    for (const [, proc] of procs) {
+      try {
+        if (proc.pid && !proc.killed) {
+          proc.kill("SIGKILL");
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   await worker.close();
   await cancelSub.quit();
   await closeRedisPublisher();

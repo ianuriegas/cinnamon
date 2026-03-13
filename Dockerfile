@@ -1,5 +1,8 @@
-# Base: Bun + Python + uv (for Python jobs that use pyproject.toml)
 FROM oven/bun:1-alpine AS base
+
+LABEL org.opencontainers.image.source="https://github.com/ianuriegas/cinnamon"
+LABEL org.opencontainers.image.description="Job orchestration framework powered by BullMQ, Postgres, and Hono"
+LABEL org.opencontainers.image.licenses="ISC"
 ARG UV_VERSION=0.10.9
 RUN apk add --no-cache python3 curl \
     && curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -v ${UV_VERSION}

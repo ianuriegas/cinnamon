@@ -44,9 +44,34 @@ docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up 
 
 See [`examples/deploy/docker/`](../examples/deploy/docker/) for a working override template.
 
+## Releases and Docker images
+
+Cinnamon publishes Docker images to GHCR on every tagged release. To create a release:
+
+```bash
+git tag v0.0.1
+git push origin v0.0.1
+```
+
+This triggers the release workflow (`.github/workflows/release.yml`) which:
+
+1. Runs the full check suite (lint, typecheck, test)
+2. Builds the Docker image and pushes to `ghcr.io/ianuriegas/cinnamon`
+3. Creates a GitHub Release with an auto-generated changelog
+
+Pull a specific version:
+
+```bash
+docker pull ghcr.io/ianuriegas/cinnamon:0.0.1
+```
+
+Tags follow semver. The workflow produces `:{version}` (e.g. `:0.0.1`), `:{major}.{minor}` (e.g. `:0.0`), and `:{sha}` tags.
+
 ## CI/CD
 
-Cinnamon's checks workflow (`.github/workflows/checks.yml`) runs lint, typecheck, and tests on every push.
+Cinnamon's checks workflow (`.github/workflows/checks.yml`) runs lint, typecheck, and tests on every push and PR to `main`.
+
+The release workflow (`.github/workflows/release.yml`) handles image builds and GitHub Releases on tag pushes.
 
 For automated deployment, see the reference templates in [`examples/deploy/`](../examples/deploy/):
 

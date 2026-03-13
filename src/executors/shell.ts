@@ -1,24 +1,17 @@
 /**
- * Shell job — runs an external command as a subprocess and captures output.
+ * Shell executor — runs an external command as a subprocess and captures output.
  *
- * Usage: bun run jobs/shell/index.ts <command> [args...]
- * Example: bun run jobs/shell/index.ts python3 ./jobs/shell/scripts/hello.py
+ * Usage: bun run src/executors/shell.ts <command> [args...]
+ * Example: bun run src/executors/shell.ts python3 ./jobs/hello-world/hello.py
  */
 
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { UnrecoverableError } from "bullmq";
-import { isDirectExecution } from "../_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const LOG_PREVIEW_LIMIT = 200;
 const SIGKILL_GRACE_MS = 3_000;
-
-function truncate(text: string, limit = LOG_PREVIEW_LIMIT): string {
-  const trimmed = text.trimEnd();
-  if (trimmed.length <= limit) return trimmed;
-  return `${trimmed.slice(0, limit)}... (truncated, ${trimmed.length} bytes total)`;
-}
 
 export interface ShellJobPayload {
   command: string;
@@ -177,11 +170,8 @@ export async function runShellJob(
         } else {
           console.warn("[shell] parseJsonOutput enabled but no valid JSON found in stdout");
         }
-      } else if (stdout) {
-        console.log(`[shell] stdout: ${truncate(stdout)}`);
       }
 
-      if (stderr) console.log(`[shell] stderr: ${truncate(stderr)}`);
       console.log(`[shell] Exit code: ${exitCode}`);
       resolve(result);
     });
@@ -191,7 +181,7 @@ export async function runShellJob(
 if (isDirectExecution(import.meta.url)) {
   const [command, ...args] = process.argv.slice(2);
   if (!command) {
-    console.error("Usage: bun run jobs/shell/index.ts <command> [args...]");
+    console.error("Usage: bun run src/executors/shell.ts <command> [args...]");
     process.exit(1);
   }
   runShellJob({ command, args }).catch((error) => {

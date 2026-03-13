@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { runShellJob } from "@/jobs/shell/index.ts";
+import { runShellJob } from "@/src/executors/shell.ts";
 
 describe("runShellJob", () => {
   test("runs a python script and captures stdout", async () => {
     const result = await runShellJob({
-      command: "python3",
-      args: ["./jobs/shell/scripts/hello.py"],
+      command: "uv",
+      args: ["run", "--project", "./jobs/hello-world", "./jobs/hello-world/hello.py"],
     });
 
     assert.ok(result.stdout.includes("██"), "expected ASCII art output");

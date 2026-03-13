@@ -1,21 +1,13 @@
 import { spawn } from "node:child_process";
-import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isCancel } from "@clack/core";
-import { intro, log, outro } from "@clack/prompts";
-import { type TreeNode, treeSelect } from "./_tree-select.ts";
-import { fileExists } from "./_utils.ts";
+import { intro, isCancel, log, outro, select } from "@clack/prompts";
+import type { JobDefinition } from "@/config/define-config.ts";
+import { interpolateEnv } from "@/config/dynamic-registry.ts";
+import { loadConfig } from "@/config/load-config.ts";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(scriptsDir, "..");
-const jobsDir = path.join(rootDir, "jobs");
-
-type JobEntry = {
-  label: string;
-  /** Relative path from jobs/ to the entrypoint (e.g. "cinnamon/index.ts") */
-  entrypoint: string;
-};
 
 function isDryRunFlag(arg: string): boolean {
   return arg === "--dry" || arg === "--dry-run" || arg === "-d";
@@ -37,76 +29,25 @@ function parseCliArgs(rawArgs: string[]) {
   return { dryRun, jobArg, forwardedArgs };
 }
 
-async function listJobs(dir = jobsDir, prefix = ""): Promise<JobEntry[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const jobs: JobEntry[] = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
-
-    const entryDir = path.join(dir, entry.name);
-    const label = prefix ? `${prefix}/${entry.name}` : entry.name;
-    const indexPath = path.join(entryDir, "index.ts");
-
-    if (await fileExists(indexPath)) {
-      jobs.push({ label, entrypoint: `${label}/index.ts` });
-    } else {
-      jobs.push(...(await listJobs(entryDir, label)));
-    }
-  }
-
-  return jobs.sort((a, b) => a.label.localeCompare(b.label));
+function buildSpawnArgs(def: JobDefinition, forwardedArgs: string[], dryRun: boolean): string[] {
+  const baseArgs = [...(def.script ? [def.script] : []), ...(def.args ?? [])];
+  const dryRunArgs = dryRun && !forwardedArgs.some((a) => isDryRunFlag(a)) ? ["--dry-run"] : [];
+  return [...baseArgs, ...forwardedArgs, ...dryRunArgs];
 }
 
-function buildJobTree(jobs: JobEntry[]): TreeNode<JobEntry>[] {
-  const root: TreeNode<JobEntry>[] = [];
+async function runJob(
+  _jobName: string,
+  def: JobDefinition,
+  forwardedArgs: string[],
+  dryRun: boolean,
+) {
+  const args = buildSpawnArgs(def, forwardedArgs, dryRun);
+  const env = def.env ? { ...process.env, ...interpolateEnv(def.env) } : undefined;
+  const cwd = def.cwd ? path.resolve(rootDir, def.cwd) : rootDir;
 
-  for (const job of jobs) {
-    const segments = job.label.split("/");
-    let siblings = root;
-
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      const isLeaf = i === segments.length - 1;
-      let existing = siblings.find((n) => n.label === segment);
-
-      if (!existing) {
-        existing = isLeaf ? { label: segment, value: job } : { label: segment, children: [] };
-        siblings.push(existing);
-      }
-
-      if (!isLeaf) {
-        existing.children ??= [];
-        siblings = existing.children;
-      }
-    }
-  }
-
-  return root;
-}
-
-function resolveJobFromArg(jobs: JobEntry[], arg: string): JobEntry | null {
-  const normalized = arg.trim().toLowerCase();
-  if (!normalized) return null;
-
-  return (
-    jobs.find((job) => job.entrypoint.toLowerCase() === normalized) ??
-    jobs.find((job) => job.label.toLowerCase() === normalized) ??
-    jobs.find((job) => {
-      const lastSegment = job.label.split("/").pop();
-      return lastSegment?.toLowerCase() === normalized;
-    }) ??
-    null
-  );
-}
-
-async function runSelectedJob(job: JobEntry, forwardedArgs: string[], dryRun: boolean) {
-  const effectiveArgs =
-    dryRun && !forwardedArgs.some((a) => isDryRunFlag(a))
-      ? [...forwardedArgs, "--dry-run"]
-      : forwardedArgs;
-  const child = spawn("bun", ["run", `jobs/${job.entrypoint}`, ...effectiveArgs], {
-    cwd: rootDir,
+  const child = spawn(def.command, args, {
+    cwd,
+    env,
     stdio: "inherit",
   });
 
@@ -115,46 +56,51 @@ async function runSelectedJob(job: JobEntry, forwardedArgs: string[], dryRun: bo
       console.error(`Job runner terminated by signal: ${signal}`);
       process.exit(1);
     }
-
     process.exit(code ?? 0);
   });
 }
 
 async function main() {
-  const jobs = await listJobs();
+  const config = await loadConfig();
+  const jobNames = Object.keys(config.jobs).sort();
 
-  if (jobs.length === 0) {
-    console.error("No jobs found in jobs/.");
+  if (jobNames.length === 0) {
+    console.error("No jobs defined in cinnamon.config.ts.");
     process.exit(1);
   }
 
   const { dryRun, jobArg, forwardedArgs } = parseCliArgs(process.argv.slice(2));
 
   if (jobArg === "--help" || jobArg === "-h") {
-    console.log("Usage: bun run job [--dry] [job-name|job-file] [-- <job args>]");
+    console.log("Usage: bun run job [--dry] [job-name] [-- <job args>]");
     console.log("       bun run job:dry\n");
     console.log("Available jobs:");
-    for (const job of jobs) {
-      console.log(`  - ${job.label} (${job.entrypoint})`);
+    for (const name of jobNames) {
+      const def = config.jobs[name];
+      const desc = def.description ? ` - ${def.description}` : "";
+      console.log(`  - ${name}${desc}`);
     }
     return;
   }
 
-  let selected: JobEntry | null = null;
+  let jobName: string;
 
   if (jobArg) {
-    selected = resolveJobFromArg(jobs, jobArg);
-    if (!selected) {
-      console.error(`Unknown job '${jobArg}'.`);
+    if (!(jobArg in config.jobs)) {
+      console.error(`Unknown job '${jobArg}'. Available: ${jobNames.join(", ")}`);
       process.exit(1);
     }
+    jobName = jobArg;
   } else {
     intro(dryRun ? "Select a job to run (DRY RUN)" : "Select a job to run");
 
-    const tree = buildJobTree(jobs);
-    const result = await treeSelect<JobEntry>({
+    const result = await select({
       message: "Pick a job",
-      tree,
+      options: jobNames.map((name) => ({
+        value: name,
+        label: name,
+        hint: config.jobs[name].description,
+      })),
     });
 
     if (isCancel(result)) {
@@ -162,11 +108,12 @@ async function main() {
       process.exit(0);
     }
 
-    selected = result;
+    jobName = result as string;
   }
 
-  log.info(`Running ${selected.label}${dryRun ? " (dry run)" : ""}`);
-  await runSelectedJob(selected, forwardedArgs, dryRun);
+  const def = config.jobs[jobName];
+  log.info(`Running ${jobName}${dryRun ? " (dry run)" : ""}`);
+  await runJob(jobName, def, forwardedArgs, dryRun);
 }
 
 main().catch((error) => {

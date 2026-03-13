@@ -1,7 +1,6 @@
 import type { JobsOptions } from "bullmq";
 
-import { nativeHandlers } from "@/jobs/native-handlers.ts";
-import { runShellJob, type ShellJobOptions } from "@/jobs/shell/index.ts";
+import { runShellJob, type ShellJobOptions } from "@/src/executors/shell.ts";
 import type { JobHandler } from "@/src/job-types.ts";
 import type { CinnamonConfig, JobDefinition } from "./define-config.ts";
 import { loadConfig, parseDuration } from "./load-config.ts";
@@ -57,7 +56,9 @@ export function getJobOptions(jobName: string, config: CinnamonConfig): JobsOpti
 }
 
 export function buildRegistry(config: CinnamonConfig): Record<string, JobHandler> {
-  const registry: Record<string, JobHandler> = { ...nativeHandlers };
+  const registry: Record<string, JobHandler> = {
+    shell: runShellJob as JobHandler,
+  };
 
   for (const [name, def] of Object.entries(config.jobs)) {
     if (name in registry) {

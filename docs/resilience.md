@@ -78,11 +78,11 @@ bun run src/worker.ts
 
 # Terminal 2: trigger slow-job from the dashboard or CLI
 cinnamon trigger slow-job
-# Wait for output like: [shell] Running: python3 ./jobs/shell/scripts/slow.py
+# Wait for output like: [shell] Running: python3 ./jobs/slow-job/slow.py
 
 # Terminal 3: verify the python process is running
 ps aux | grep slow.py
-# You should see: python3 ./jobs/shell/scripts/slow.py
+# You should see: python3 ./jobs/slow-job/slow.py
 
 # Terminal 1: press Ctrl+C
 # You should see:
@@ -129,7 +129,7 @@ bun run src/worker.ts
 
 # Terminal 2: trigger slow-job
 cinnamon trigger slow-job
-# Wait for: [shell] Running: python3 ./jobs/shell/scripts/slow.py
+# Wait for: [shell] Running: python3 ./jobs/slow-job/slow.py
 
 # Terminal 2: find the worker PID and hard-kill it
 pgrep -f "bun.*src/worker.ts"

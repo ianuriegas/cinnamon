@@ -38,7 +38,21 @@ bun run scripts/seed-team.ts "Acme Corp" "acme-ci"
 
 ### GET /health
 
-Returns `{ "status": "ok" }`. No auth required.
+Health check that probes Postgres and Redis. No auth required.
+
+**Response (200)** — both Postgres and Redis are reachable:
+
+```json
+{ "status": "ok", "checks": { "postgres": "ok", "redis": "ok" } }
+```
+
+**Response (503)** — one or both are unreachable:
+
+```json
+{ "status": "degraded", "checks": { "postgres": "unreachable", "redis": "ok" } }
+```
+
+Use this endpoint for Docker/K8s liveness and readiness probes. When `status` is `degraded`, the API may be running but job processing will fail.
 
 ---
 
@@ -193,7 +207,7 @@ List all job definitions loaded from `cinnamon.config.ts`. Useful for discoverin
     {
       "name": "hello-world",
       "command": "python3",
-      "script": "./jobs/shell/scripts/hello.py",
+      "script": "./jobs/hello-world/hello.py",
       "schedule": null,
       "timeout": "30s",
       "retries": null,
@@ -270,13 +284,13 @@ curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
   -H "Authorization: Bearer cin_<your_key>" | jq
 ```
 
-Trigger with data:
+Trigger with data (e.g. cinnamon countdown start):
 
 ```bash
-curl -s -X POST http://localhost:3000/v1/jobs/shell/trigger \
+curl -s -X POST http://localhost:3000/v1/jobs/cinnamon/trigger \
   -H "Authorization: Bearer cin_<your_key>" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"command": "echo", "args": ["hello from trigger"]}}' | jq
+  -d '{"data": {"start": 5}}' | jq
 ```
 
 ---

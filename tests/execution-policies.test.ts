@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { CinnamonConfig } from "@/config/define-config.ts";
 import { buildRegistry, getJobOptions, interpolateEnv } from "@/config/dynamic-registry.ts";
-import { runShellJob } from "@/jobs/shell/index.ts";
+import { runShellJob } from "@/src/executors/shell.ts";
 
 describe("interpolateEnv", () => {
   test("replaces ${VAR} with process.env value", () => {

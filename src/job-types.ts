@@ -10,5 +10,5 @@ export const JOB_STATUS = {
 export type JobData = Record<string, unknown>;
 export type JobHandler = (
   payload: JobData,
-  options?: import("@/jobs/shell/index.ts").ShellJobOptions,
+  options?: import("@/src/executors/shell.ts").ShellJobOptions,
 ) => Promise<unknown>;

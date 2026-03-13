@@ -9,7 +9,7 @@ Enqueue with parseJsonOutput: true to have the worker parse it:
   POST /v1/enqueue
   { "jobName": "shell", "data": {
       "command": "python3",
-      "args": ["./jobs/shell/scripts/example-json.py"],
+      "args": ["./jobs/example-json/example-json.py"],
       "parseJsonOutput": true
   }}
 """

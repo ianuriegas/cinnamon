@@ -50,8 +50,8 @@ describe("buildRegistry", () => {
     const config: CinnamonConfig = {
       jobs: {
         "hello-py": {
-          command: "python3",
-          script: "./jobs/shell/scripts/hello.py",
+          command: "uv",
+          args: ["run", "--project", "./jobs/hello-world", "./jobs/hello-world/hello.py"],
           timeout: "10s",
         },
       },

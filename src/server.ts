@@ -1,11 +1,13 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import figlet from "figlet";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
 import { getJobHandlers, getJobOptions } from "@/config/dynamic-registry.ts";
 import { getEnv, isDashboardAuthEnabled } from "@/config/env.ts";
 import { loadConfig } from "@/config/load-config.ts";
+import { getRedisPublisher } from "@/config/redis-pubsub.ts";
 import { resolveTeams } from "@/config/resolve-teams.ts";
 import { pool } from "@/db/index.ts";
 import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
@@ -32,7 +34,27 @@ export const app = new Hono<AppEnv>();
 
 app.use("*", secureHeaders());
 
-app.get("/health", (c) => c.json({ status: "ok" }));
+app.get("/health", async (c) => {
+  const checks: Record<string, string> = {};
+
+  try {
+    await pool.query("SELECT 1");
+    checks.postgres = "ok";
+  } catch {
+    checks.postgres = "unreachable";
+  }
+
+  try {
+    const redis = getRedisPublisher();
+    await redis.ping();
+    checks.redis = "ok";
+  } catch {
+    checks.redis = "unreachable";
+  }
+
+  const healthy = checks.postgres === "ok" && checks.redis === "ok";
+  return c.json({ status: healthy ? "ok" : "degraded", checks }, healthy ? 200 : 503);
+});
 
 // --- Auth routes (before dashboard) ---
 const authRoutes = createAuthRoutes();
@@ -110,14 +132,7 @@ if (isDirectExecution(import.meta.url)) {
   const { port } = getEnv();
 
   serve({ fetch: app.fetch, port }, (info) => {
-    console.log(`
- ██████╗██╗███╗   ██╗███╗   ██╗ █████╗ ███╗   ███╗ ██████╗ ███╗   ██╗
-██╔════╝██║████╗  ██║████╗  ██║██╔══██╗████╗ ████║██╔═══██╗████╗  ██║
-██║     ██║██╔██╗ ██║██╔██╗ ██║███████║██╔████╔██║██║   ██║██╔██╗ ██║
-██║     ██║██║╚██╗██║██║╚██╗██║██╔══██║██║╚██╔╝██║██║   ██║██║╚██╗██║
-╚██████╗██║██║ ╚████║██║ ╚████║██║  ██║██║ ╚═╝ ██║╚██████╔╝██║ ╚████║
- ╚═════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-`);
+    console.log(figlet.textSync("Cinnamon", { font: "ANSI Shadow" }));
     console.log(`  Listening on http://localhost:${info.port}`);
     console.log(`  Dashboard  http://localhost:${info.port}/dashboard`);
     console.log(

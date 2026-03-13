@@ -3,6 +3,7 @@
 !.env.example
 
 node_modules/
+.venv/
 package-lock.json
 dist/
 

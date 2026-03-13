@@ -234,7 +234,7 @@ describe("Jobs Observability API", () => {
 
     const helloWorld = body.data.find((d: { name: string }) => d.name === "hello-world");
     assert.ok(helloWorld);
-    assert.equal(helloWorld.command, "python3");
+    assert.equal(helloWorld.command, "uv");
     assert.equal(helloWorld.description, "Demo Python script");
   });
 
@@ -261,16 +261,16 @@ describe("Jobs Observability API", () => {
   // --- POST /v1/jobs/:name/trigger ---
 
   test("POST /v1/jobs/:name/trigger enqueues a job", async () => {
-    const res = await req("/v1/jobs/shell/trigger", {
+    const res = await req("/v1/jobs/hello-world/trigger", {
       method: "POST",
       headers: authHeader(),
-      body: JSON.stringify({ data: { command: "echo", args: ["triggered"] } }),
+      body: JSON.stringify({}),
     });
     assert.equal(res.status, 200);
     const body = await res.json();
 
     assert.ok(body.jobId);
-    assert.equal(body.jobName, "shell");
+    assert.equal(body.jobName, "hello-world");
   });
 
   test("POST /v1/jobs/:name/trigger with empty body succeeds", async () => {
@@ -296,7 +296,7 @@ describe("Jobs Observability API", () => {
   });
 
   test("POST /v1/jobs/:name/trigger without auth returns 401", async () => {
-    const res = await req("/v1/jobs/shell/trigger", {
+    const res = await req("/v1/jobs/hello-world/trigger", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data: {} }),

@@ -21,6 +21,7 @@ jobs/
   hello-world/        Python demo with pyfiglet (hello.py)
   example-json/       Python demo with JSON output (example-json.py)
   slow-job/           Long-running Python demo for cancel/streaming tests
+  retention/          Prune job runs older than N days (scheduled daily)
 examples/             Reference implementations (not part of core)
   jobs/spotify/       Spotify integration example
   deploy/docker/         Docker Compose override for submodule usage

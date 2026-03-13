@@ -35,12 +35,7 @@ function buildSpawnArgs(def: JobDefinition, forwardedArgs: string[], dryRun: boo
   return [...baseArgs, ...forwardedArgs, ...dryRunArgs];
 }
 
-async function runJob(
-  _jobName: string,
-  def: JobDefinition,
-  forwardedArgs: string[],
-  dryRun: boolean,
-) {
+async function runJob(def: JobDefinition, forwardedArgs: string[], dryRun: boolean) {
   const args = buildSpawnArgs(def, forwardedArgs, dryRun);
   const env = def.env ? { ...process.env, ...interpolateEnv(def.env) } : undefined;
   const cwd = def.cwd ? path.resolve(rootDir, def.cwd) : rootDir;
@@ -113,7 +108,7 @@ async function main() {
 
   const def = config.jobs[jobName];
   log.info(`Running ${jobName}${dryRun ? " (dry run)" : ""}`);
-  await runJob(jobName, def, forwardedArgs, dryRun);
+  await runJob(def, forwardedArgs, dryRun);
 }
 
 main().catch((error) => {

@@ -58,6 +58,18 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  handleUnauthorized(res);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 async function del<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "DELETE", credentials: "include" });
   handleUnauthorized(res);
@@ -124,7 +136,7 @@ export interface AuthUser {
   teamNames?: string[];
 }
 
-export interface AuthResponse {
+interface AuthResponse {
   user: AuthUser | null;
   accessRequestsEnabled: boolean;
   authEnabled: boolean;
@@ -213,18 +225,7 @@ export async function updateUserTeams(
   userId: number,
   teamIds: number[],
 ): Promise<{ data: TeamRow[] }> {
-  return fetch(`${BASE}/users/${userId}/teams`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ teamIds }),
-  }).then((res) => {
-    if (res.status === 401) {
-      window.location.href = "/auth/login";
-    }
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return res.json();
-  });
+  return put(`/users/${userId}/teams`, { teamIds });
 }
 
 export async function approveAccessRequest(

@@ -9,16 +9,16 @@ import { nanoid } from "nanoid";
 
 import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 
-export type RequirePackageTsPayload = {
+type RequirePackageTsPayload = {
   count?: number;
 };
 
-export function parseCount(value: unknown): number {
+function parseCount(value: unknown): number {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 10) : 3;
 }
 
-export async function runRequirePackageTsJob(payload: RequirePackageTsPayload = {}) {
+async function runRequirePackageTsJob(payload: RequirePackageTsPayload = {}) {
   const count = parseCount(payload.count ?? 3);
   const ids: string[] = [];
 

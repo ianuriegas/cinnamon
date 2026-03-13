@@ -18,6 +18,10 @@ Uses Bun's built-in test runner. Run with `bun test`.
 | `src/routes/jobs.ts`          | Jobs observability API (list, detail, definitions, schedules, trigger) |
 | `src/scheduler.ts`            | Scheduled job extraction from config                          |
 | Execution policies            | Env injection, cwd override, env interpolation, job options   |
+| `cli/format.ts`               | CLI output formatting (table, duration, status color, validate) |
+| `src/notifications.ts`        | Discord/Slack/generic formatters, URL interpolation           |
+| `access-requests`             | Access request CRUD, approve/deny flows                       |
+| `dashboard-teams`             | Dashboard team management, PUT/GET user teams                 |
 
 ## Test details
 
@@ -94,3 +98,33 @@ Uses Bun's built-in test runner. Run with `bun test`.
 - `POST /v1/jobs/:name/trigger` with empty body succeeds
 - `POST /v1/jobs/:name/trigger` with unknown name returns 400
 - All endpoints return 401 without auth
+
+### CLI tests (`tests/cli.test.ts`)
+
+- Config loading from JSON file
+- Env vars and flag precedence for API URL/key
+- Table formatting with aligned columns
+- `formatDuration`, `statusColor`, `formatTimestamp`
+- Validate command parses and reports config errors
+
+### Notifications tests (`tests/notifications.test.ts`)
+
+- Platform detection (Discord, Slack, generic)
+- Discord/Slack/generic payload formatters
+- URL interpolation for `${VAR}` placeholders
+- Notification config validation
+- `fireNotifications` no-op when no targets
+
+### Access requests tests (`tests/access-requests.test.ts`)
+
+- Submit access request (authenticated user)
+- Approve/deny flows (super-admin)
+- Team assignment on approve
+- Re-enable disabled user on approve
+- Conditional skip when auth env not configured
+
+### Dashboard teams tests (`tests/dashboard-teams.test.ts`)
+
+- GET/PUT user teams
+- Runs 403 for user with no teams
+- Conditional skip when auth env not configured

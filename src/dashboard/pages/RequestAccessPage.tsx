@@ -80,25 +80,6 @@ export function RequestAccessPage({ user, accessRequestsEnabled }: Props) {
     }
   }
 
-  async function handleRequestAgain() {
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await submitAccessRequest();
-      setSubmitted(true);
-      await load();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("409")) {
-        await load();
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">
@@ -206,7 +187,7 @@ export function RequestAccessPage({ user, accessRequestsEnabled }: Props) {
                 </p>
               )}
               <div className="flex flex-col gap-2 items-center">
-                <RequestAgainButton onRequest={handleRequestAgain} isSubmitting={isSubmitting} />
+                <RequestAgainButton onRequest={handleRequest} isSubmitting={isSubmitting} />
                 <a href="/auth/logout" className="btn btn-ghost btn-sm">
                   Sign out
                 </a>
@@ -226,7 +207,7 @@ export function RequestAccessPage({ user, accessRequestsEnabled }: Props) {
                 </p>
                 <div className="flex flex-col gap-2 items-center">
                   <RequestAgainButton
-                    onRequest={handleRequestAgain}
+                    onRequest={handleRequest}
                     isSubmitting={isSubmitting}
                     label="Request Access Again"
                   />

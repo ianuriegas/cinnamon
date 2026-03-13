@@ -13,16 +13,7 @@ import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SIGKILL_GRACE_MS = 3_000;
 
-export interface ShellJobPayload {
-  command: string;
-  args?: string[];
-  timeoutMs?: number;
-  parseJsonOutput?: boolean;
-  env?: Record<string, string>;
-  cwd?: string;
-}
-
-export interface ShellJobResult {
+interface ShellJobResult {
   stdout: string;
   stderr: string;
   exitCode: number;
@@ -36,7 +27,16 @@ export interface ShellJobOptions {
   onProcSpawn?: (proc: ChildProcess) => void;
 }
 
-function validatePayload(payload: Record<string, unknown>): Required<ShellJobPayload> {
+type ValidatedPayload = {
+  command: string;
+  args: string[];
+  timeoutMs: number;
+  parseJsonOutput: boolean;
+  env?: Record<string, string>;
+  cwd?: string;
+};
+
+function validatePayload(payload: Record<string, unknown>): ValidatedPayload {
   const { command, args, timeoutMs, parseJsonOutput, env, cwd } = payload;
   if (typeof command !== "string" || command.trim() === "") {
     throw new Error("Shell job requires a non-empty 'command' string in the payload");
@@ -49,8 +49,8 @@ function validatePayload(payload: Record<string, unknown>): Required<ShellJobPay
     env:
       env && typeof env === "object" && !Array.isArray(env)
         ? (env as Record<string, string>)
-        : (undefined as unknown as Record<string, string>),
-    cwd: typeof cwd === "string" ? cwd : (undefined as unknown as string),
+        : undefined,
+    cwd: typeof cwd === "string" ? cwd : undefined,
   };
 }
 

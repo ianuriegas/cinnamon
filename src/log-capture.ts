@@ -16,11 +16,11 @@ function formatArgs(args: unknown[]): string {
     .join(" ");
 }
 
-export interface CapturedLogs {
+interface CapturedLogs {
   lines: string[];
 }
 
-export interface CaptureOptions {
+interface CaptureOptions {
   onLine?: (line: string) => void;
 }
 

@@ -153,7 +153,7 @@ async function markCancelled(jobId: string, logs?: string, partialResult?: unkno
 
 const jobLogsMap = new Map<string, string>();
 
-export const worker = new Worker<JobData>(
+const worker = new Worker<JobData>(
   jobsQueueName,
   async (job: Job<JobData>) => {
     const jobId = String(job.id ?? "");

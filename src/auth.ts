@@ -19,7 +19,7 @@ export async function verifyApiKey(plainKey: string): Promise<{ teamId: number }
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeys.id, rows[0].id))
     .execute()
-    .catch(() => {});
+    .catch((err) => console.warn("[auth] Failed to update lastUsedAt:", err));
 
   return { teamId: rows[0].teamId };
 }

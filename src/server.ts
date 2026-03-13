@@ -16,6 +16,7 @@ import { dashboardAuthMiddleware } from "@/src/auth/dashboard-middleware.ts";
 import { createAuthRoutes } from "@/src/auth/routes.ts";
 import { superAdminMiddleware } from "@/src/auth/super-admin-middleware.ts";
 import { createDashboardApi } from "@/src/dashboard/api.ts";
+import { isJobVisibleToTeam } from "@/src/lib/team-utils.ts";
 import { authMiddleware } from "@/src/middleware/auth.ts";
 import { createJobsRouter } from "@/src/routes/jobs.ts";
 import { jobsQueue } from "./queue.ts";
@@ -76,8 +77,7 @@ v1.post("/enqueue", async (c) => {
 
   const teamId = c.get("teamId");
 
-  const allowedTeams = jobTeamIds.get(body.jobName);
-  if (allowedTeams && !allowedTeams.includes(teamId)) {
+  if (!isJobVisibleToTeam(body.jobName, teamId, jobTeamIds)) {
     return c.json({ error: `Unknown job: ${body.jobName}` }, 400);
   }
   const jobData = { ...body.data, teamId };

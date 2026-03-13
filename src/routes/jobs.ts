@@ -10,7 +10,7 @@ import type { JobHandler } from "@/src/job-types.ts";
 import { isJobVisibleToTeam } from "@/src/lib/team-utils.ts";
 
 const MAX_LIMIT = 100;
-const DEFAULT_LIMIT = 20;
+const DEFAULT_LIMIT = 25;
 const TRUNCATE_LENGTH = 200;
 
 type AppEnv = {

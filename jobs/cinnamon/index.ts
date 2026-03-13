@@ -10,7 +10,7 @@ import { isDirectExecution } from "../_shared/is-direct-execution.ts";
 const DEFAULT_START = 10;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export type CinnamonJobPayload = {
+type CinnamonJobPayload = {
   start?: number;
 };
 
@@ -30,7 +30,7 @@ async function spinCinnamon() {
   console.log(figlet.textSync("Cinnamon", { font: "ANSI Shadow" }));
 }
 
-export async function runCinnamonJob(payload: CinnamonJobPayload = {}) {
+async function runCinnamonJob(payload: CinnamonJobPayload = {}) {
   const start = parseStart(payload.start);
   console.log(`Starting countdown from ${start}...`);
   await runCountdown(start);

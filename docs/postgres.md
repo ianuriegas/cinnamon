@@ -107,3 +107,6 @@ All core tables live in the `cinnamon` Postgres schema (not `public`). See [Migr
 | `cinnamon.teams`            | Tenant/team registry                      |
 | `cinnamon.api_keys`         | Hashed API keys linked to teams           |
 | `cinnamon.jobs_log`         | Durable log of all processed jobs         |
+| `cinnamon.users`            | Dashboard users (Google OAuth)            |
+| `cinnamon.user_teams`       | User-to-team assignments                  |
+| `cinnamon.access_requests`  | Pending/approved/denied access requests   |

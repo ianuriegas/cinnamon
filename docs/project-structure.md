@@ -101,7 +101,7 @@ docs/                 Documentation
 | `bun run job`                        | Interactive menu to run a local script from `jobs/`|
 | `bun run job:cinnamon -- 5`          | Run `jobs/cinnamon.ts` directly from 5             |
 | `bun run job:dry`                    | Interactive menu; requests dry-run mode             |
-| `bun run scripts/seed-team.ts [name] [label]` | Create a team and API key (default: "Default Team") |
+| `bun run seed:team [name] [label]`  | Create a team and API key (alias for `scripts/seed-team.ts`)   |
 | `bun run generate:secret`            | Generate a random `SESSION_SECRET` for dashboard auth |
 | `bun run db:migrate`                 | Apply pending Drizzle migrations                   |
 | `bun run cinnamon:migrate`           | Alias for `db:migrate` (for submodule users)       |

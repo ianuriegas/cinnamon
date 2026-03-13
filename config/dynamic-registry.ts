@@ -80,8 +80,3 @@ export async function getJobHandlers(): Promise<Record<string, JobHandler>> {
   _jobHandlers = buildRegistry(config);
   return _jobHandlers;
 }
-
-/** Reset cached registry (useful for testing). */
-export function resetRegistryCache(): void {
-  _jobHandlers = null;
-}

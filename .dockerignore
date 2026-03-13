@@ -9,6 +9,7 @@ dist
 .cursor
 .agents
 docs
+examples
 local
 tests
 *.md

@@ -15,7 +15,6 @@ Enqueue with parseJsonOutput: true to have the worker parse it:
 """
 
 import json
-import sys
 from datetime import datetime, timezone
 
 print("Starting work...")
@@ -28,4 +27,3 @@ result = {
 }
 
 print(json.dumps(result))
-sys.exit(0)

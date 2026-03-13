@@ -9,13 +9,7 @@ import { users } from "@/db/schema/users.ts";
 
 import { SESSION_COOKIE, verifySession } from "./dashboard-auth.ts";
 
-function isAllowedForDisabledUser(path: string, method: string): boolean {
-  if (path === "/access-requests/mine" && method === "GET") return true;
-  if (path === "/access-requests" && method === "POST") return true;
-  return false;
-}
-
-function isAllowedForNoTeamsUser(path: string, method: string): boolean {
+function isAllowedUnauthPath(path: string, method: string): boolean {
   if (path === "/access-requests/mine" && method === "GET") return true;
   if (path === "/access-requests" && method === "POST") return true;
   return false;
@@ -59,7 +53,7 @@ export async function dashboardAuthMiddleware(c: Context, next: Next) {
 
   if (!dbUser) {
     const apiPath = c.req.path.replace(/^\/api\/dashboard/, "");
-    if (isAllowedForDisabledUser(apiPath, c.req.method)) {
+    if (isAllowedUnauthPath(apiPath, c.req.method)) {
       c.set("user", {
         id: 0,
         email: session.email,
@@ -81,7 +75,7 @@ export async function dashboardAuthMiddleware(c: Context, next: Next) {
 
   if (dbUser.disabled && !dbUser.isSuperAdmin) {
     const apiPath = c.req.path.replace(/^\/api\/dashboard/, "");
-    if (isAllowedForDisabledUser(apiPath, c.req.method)) {
+    if (isAllowedUnauthPath(apiPath, c.req.method)) {
       return next();
     }
     return c.json({ error: "Forbidden", accessRequestsEnabled: isAccessRequestsEnabled() }, 403);
@@ -89,7 +83,7 @@ export async function dashboardAuthMiddleware(c: Context, next: Next) {
 
   if (!dbUser.isSuperAdmin && teamIds.length === 0) {
     const apiPath = c.req.path.replace(/^\/api\/dashboard/, "");
-    if (!isAllowedForNoTeamsUser(apiPath, c.req.method)) {
+    if (!isAllowedUnauthPath(apiPath, c.req.method)) {
       return c.json({ error: "no_teams" }, 403);
     }
   }

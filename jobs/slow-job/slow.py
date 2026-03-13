@@ -5,7 +5,6 @@ Prints a line every second for 30 seconds. Trigger from the dashboard
 and cancel mid-run to verify partial output is preserved.
 """
 
-import sys
 import time
 
 TOTAL = 30

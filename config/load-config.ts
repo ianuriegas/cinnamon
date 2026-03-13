@@ -172,11 +172,6 @@ export async function loadConfig(): Promise<CinnamonConfig> {
   return _config;
 }
 
-/** Reset cached config (useful for testing). */
-export function resetConfigCache(): void {
-  _config = null;
-}
-
 export interface ScheduleEntry {
   jobName: string;
   pattern: string;

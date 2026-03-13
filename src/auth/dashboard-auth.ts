@@ -17,14 +17,14 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 const googleJwks = createRemoteJWKSet(GOOGLE_JWKS_URL);
 
-export interface GoogleClaims {
+interface GoogleClaims {
   sub: string;
   email: string;
   name: string;
   picture: string;
 }
 
-export interface SessionPayload extends GoogleClaims {
+interface SessionPayload extends GoogleClaims {
   userId: number;
   isSuperAdmin: boolean;
 }
@@ -44,15 +44,15 @@ function requireAuthEnv() {
 // PKCE + State helpers
 // ---------------------------------------------------------------------------
 
-export function generateCodeVerifier(): string {
+function generateCodeVerifier(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export function generateCodeChallenge(verifier: string): string {
+function generateCodeChallenge(verifier: string): string {
   return createHash("sha256").update(verifier).digest("base64url");
 }
 
-export function generateState(): string {
+function generateState(): string {
   return randomBytes(16).toString("hex");
 }
 
@@ -138,7 +138,7 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleClaims
   };
 }
 
-export interface SessionUser {
+interface SessionUser {
   id: number;
   googleSub: string;
   email: string;

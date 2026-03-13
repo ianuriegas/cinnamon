@@ -56,7 +56,7 @@ git push origin v0.0.1
 This triggers the release workflow (`.github/workflows/release.yml`) which:
 
 1. Runs the full check suite (lint, typecheck, test)
-2. Builds the Docker image and pushes to `ghcr.io/ianuriegas/cinnamon`
+2. Builds multi-arch Docker images (amd64 + arm64) and pushes to `ghcr.io/ianuriegas/cinnamon`
 3. Creates a GitHub Release with an auto-generated changelog
 
 Pull a specific version:

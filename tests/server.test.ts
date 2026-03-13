@@ -42,8 +42,10 @@ describe("API server", () => {
   test("GET /health returns 200", async () => {
     const res = await req("/health");
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.deepEqual(body, { status: "ok" });
+    const body = (await res.json()) as { status: string; checks: Record<string, string> };
+    assert.equal(body.status, "ok");
+    assert.equal(body.checks?.postgres, "ok");
+    assert.equal(body.checks?.redis, "ok");
   });
 
   test("POST /v1/enqueue without auth returns 401", async () => {

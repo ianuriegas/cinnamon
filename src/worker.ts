@@ -13,7 +13,7 @@ import {
 } from "@/config/redis-pubsub.ts";
 import { db, pool } from "@/db/index.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
-import type { ShellJobOptions } from "@/jobs/shell/index.ts";
+import type { ShellJobOptions } from "@/src/executors/shell.ts";
 import { JOB_STATUS, type JobData } from "./job-types.ts";
 import { captureConsoleLogs } from "./log-capture.ts";
 import { fireNotifications, type JobEvent } from "./notifications.ts";

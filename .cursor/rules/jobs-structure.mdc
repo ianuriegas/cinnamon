@@ -37,6 +37,6 @@ See `examples/jobs/` for a concrete example of this pattern.
 
 - `jobs/_shared/` contains utilities shared across all jobs (e.g. `isDirectExecution`). Prefixed with `_` so the job runner skips it.
 - Every job entrypoint (`index.ts`) must use `isDirectExecution(import.meta.url)` to support standalone execution via `bun run jobs/<path>/index.ts`.
-- `jobs/native-handlers.ts` registers the `shell` executor as the only native handler. All user-facing jobs are config-driven via `cinnamon.config.ts` and merged into the unified registry at `config/dynamic-registry.ts`.
+- The `shell` executor (from `src/executors/shell.ts`) is registered as a native handler in `config/dynamic-registry.ts`. All user-facing jobs are config-driven via `cinnamon.config.ts` and merged into the unified registry there.
 - Job-specific types go in the job's own `types.ts`. Shared provider types stay at the provider level.
 - Use `../api.ts` and `../auth.ts` for shared provider imports within nested jobs. Use `@/db/...` and `@/config/...` for cross-directory imports.

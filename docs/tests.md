@@ -11,7 +11,7 @@ Uses Bun's built-in test runner. Run with `bun test`.
 | `config/load-config.ts`       | Duration parsing, config validation, cron validation          |
 | `config/dynamic-registry.ts`  | Registry building, collision detection, config handler wiring |
 | `jobs/cinnamon/`              | Start value parsing (`parseStart`)                            |
-| `jobs/shell/`                 | Shell job execution, timeout, error handling (`runShellJob`)  |
+| `src/executors/shell.ts`      | Shell executor, timeout, error handling (`runShellJob`)       |
 | `jobs/_shared/`               | Direct execution detection (`isDirectExecution`)              |
 | `db/schema/`                  | Multi-tenant schema (teams, api_keys, jobs_log with team_id)  |
 | `src/server.ts`               | API server endpoints (health, auth, enqueue validation)       |

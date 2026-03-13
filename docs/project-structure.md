@@ -18,9 +18,9 @@ jobs/
   cinnamon/           Countdown demo job (config-driven)
   require-package-ts/ TypeScript job with npm package (nanoid)
   require-package-py/ Python job with uv + pyproject.toml (humanize)
-  shell/              Shell/process executor (run any command/script)
-    scripts/          Example scripts (hello.py, example-json.py, slow.py)
-  native-handlers.ts  Shell executor registration (framework internal)
+  hello-world/        Python demo with pyfiglet (hello.py)
+  example-json/       Python demo with JSON output (example-json.py)
+  slow-job/           Long-running Python demo for cancel/streaming tests
 examples/             Reference implementations (not part of core)
   jobs/spotify/       Spotify integration example
   deploy/docker/         Docker Compose override for submodule usage
@@ -42,6 +42,8 @@ cli/
 scripts/              Dev tools (seed team, migration drop, DB reset)
 src/
   index.ts            Trigger CLI entrypoint
+  executors/
+    shell.ts          Subprocess executor (runShellJob) used by all config-driven jobs
   server.ts           Hono HTTP API server
   worker.ts           BullMQ worker process
   queue.ts            Queue configuration

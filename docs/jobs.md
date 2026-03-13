@@ -13,7 +13,7 @@ export default defineConfig({
   jobs: {
     "hello-world": {
       command: "python3",
-      script: "./jobs/shell/scripts/hello.py",
+      script: "./jobs/hello-world/hello.py",
       timeout: "30s",
       description: "Demo Python script",
     },
@@ -93,30 +93,22 @@ URLs support `${VAR}` interpolation from the host environment, so webhook secret
 
 Notifications fire after the worker marks a job as completed or failed. Delivery retries up to 2 times with backoff. Webhook failures are logged but never block job execution.
 
-## Shell jobs
+## Shell executor
 
-The `shell` handler runs any command as a subprocess, capturing stdout, stderr, and exit code. Config-driven jobs use this handler automatically.
-
-### Triggering via CLI
-
-```bash
-bun run trigger shell '{"command":"python3","args":["./jobs/shell/scripts/hello.py"]}'
-```
-
-### Triggering via API
-
-```bash
-curl -s -X POST http://localhost:3000/v1/jobs/shell/trigger \
-  -H "Authorization: Bearer cin_<your_key>" \
-  -H "Content-Type: application/json" \
-  -d '{"data": {"command": "echo", "args": ["hello"]}}' | jq
-```
-
-Or use a config-defined job name directly:
+Config-driven jobs run as subprocesses via the shell executor, which captures stdout, stderr, and exit code. Trigger jobs by their config-defined name:
 
 ```bash
 curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
   -H "Authorization: Bearer cin_<your_key>" | jq
+```
+
+Or pass data for jobs that accept it (e.g. `cinnamon` with `{ "start": 5 }`):
+
+```bash
+curl -s -X POST http://localhost:3000/v1/jobs/cinnamon/trigger \
+  -H "Authorization: Bearer cin_<your_key>" \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"start": 5}}' | jq
 ```
 
 ### Structured JSON output

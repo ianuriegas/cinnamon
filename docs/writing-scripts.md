@@ -23,7 +23,7 @@ Enqueue without `parseJsonOutput`:
   "jobName": "shell",
   "data": {
     "command": "python3",
-    "args": ["./jobs/shell/scripts/hello.py"]
+    "args": ["./jobs/hello-world/hello.py"]
   }
 }
 ```
@@ -55,7 +55,7 @@ Enqueue with `parseJsonOutput: true`:
   "jobName": "shell",
   "data": {
     "command": "python3",
-    "args": ["./jobs/shell/scripts/example-json.py"],
+    "args": ["./jobs/example-json/example-json.py"],
     "parseJsonOutput": true
   }
 }
@@ -139,8 +139,8 @@ See `jobs/require-package-ts/` for a working example.
 
 | Script | Description | JSON output |
 | --- | --- | --- |
-| `jobs/shell/scripts/hello.py` | Minimal hello world | No |
-| `jobs/shell/scripts/example-json.py` | Structured JSON result | Yes |
-| `jobs/shell/scripts/slow.py` | Long-running (30s) for testing cancel and live streaming | No |
+| `jobs/hello-world/hello.py` | Minimal hello world | No |
+| `jobs/example-json/example-json.py` | Structured JSON result | Yes |
+| `jobs/slow-job/slow.py` | Long-running (30s) for testing cancel and live streaming | No |
 | `jobs/require-package-py/script.py` | Python with uv + humanize | No |
 | `jobs/require-package-ts/index.ts` | TypeScript with nanoid | No |

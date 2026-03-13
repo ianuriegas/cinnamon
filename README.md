@@ -84,7 +84,7 @@ export default defineConfig({
   jobs: {
     "my-job": {
       command: "python3",
-      script: "./jobs/shell/scripts/my-script.py",
+      script: "./jobs/my-job/my-script.py",
       timeout: "30s",
       description: "My custom job",
     },
@@ -97,7 +97,7 @@ Any command that can run in a shell works -- `python3`, `bash`, `bun`, `node`, `
 **2. Create the script** at the path you specified:
 
 ```python
-# jobs/shell/scripts/my-script.py
+# jobs/my-job/my-script.py
 import json
 
 result = {"processed": 42, "status": "ok"}
@@ -118,7 +118,7 @@ Add a `schedule` field (cron syntax) to run it automatically:
 ```typescript
 "my-job": {
   command: "python3",
-  script: "./jobs/shell/scripts/my-script.py",
+  script: "./jobs/my-job/my-script.py",
   timeout: "30s",
   schedule: "0 * * * *",  // every hour
 },
@@ -133,7 +133,7 @@ Jobs can send webhooks on success or failure. Cinnamon auto-detects Discord and 
 ```typescript
 "my-job": {
   command: "python3",
-  script: "./jobs/shell/scripts/my-script.py",
+  script: "./jobs/my-job/my-script.py",
   timeout: "30s",
   notifications: {
     on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],

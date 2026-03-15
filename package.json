@@ -1,6 +1,6 @@
 {
   "name": "cinnamon",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Job orchestration framework powered by BullMQ, Postgres, and Hono.",
   "main": "src/index.ts",
   "scripts": {
@@ -34,7 +34,15 @@
     "type": "git",
     "url": "git+https://github.com/ianuriegas/cinnamon.git"
   },
-  "keywords": ["job-queue", "bullmq", "cron", "job-orchestration", "workflow", "postgres", "hono"],
+  "keywords": [
+    "job-queue",
+    "bullmq",
+    "cron",
+    "job-orchestration",
+    "workflow",
+    "postgres",
+    "hono"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",

@@ -20,58 +20,57 @@ flowchart LR
   Worker --> JobsLog["cinnamon.jobs_log (Postgres)"]
 ```
 
-## Quick start
+## Getting started
 
 Requires [Bun](https://bun.sh) and Docker Compose.
 
-1. Install dependencies, configure env, and start infrastructure:
+### New project
+
+The fastest way to start is `bun create cinnamon`:
 
 ```bash
+bun create cinnamon my-app
+cd my-app
+```
+
+The scaffolding wizard sets up a working Cinnamon instance with Postgres, Redis, the dashboard, and an example job. Start infrastructure, then run:
+
+```bash
+docker compose up -d postgres redis
+bun run db:migrate
+bun run seed:team              # creates a team + API key (save the cin_... key)
+```
+
+Open two terminals:
+
+```bash
+bun run worker   # terminal 1
+bun run dev      # terminal 2
+```
+
+Open `http://localhost:5173/dashboard` to view the dashboard.
+
+```bash
+cinnamon init                   # paste your API key when prompted
+cinnamon trigger hello-world    # trigger a job
+cinnamon status hello-world     # check the result
+```
+
+### Development (clone the repo)
+
+If you want to contribute or work on the framework itself:
+
+```bash
+git clone https://github.com/ianuriegas/cinnamon.git
+cd cinnamon
 bun install
 cp .env.example .env
 docker compose up -d postgres redis
 bun run db:migrate
+bun run seed:team
 ```
 
-2. Create a team and API key (save the `cin_...` key that's printed):
-
-```bash
-bun run scripts/seed-team.ts
-```
-
-3. Configure the CLI (run once, then paste the key when prompted):
-
-```bash
-cinnamon init
-```
-
-4. Open two terminals -- one for the worker, one for the API server + dashboard:
-
-```bash
-bun run worker
-```
-
-```bash
-bun run dev
-```
-
-Starts API server (:3000) and Vite dashboard (:5173).
-
-Open `http://localhost:5173/dashboard` to view the dashboard (with HMR).
-
-5. Trigger a job:
-
-```bash
-cinnamon trigger hello-world
-cinnamon status hello-world
-```
-
-Or use curl:
-
-```bash
-curl -s -X POST http://localhost:3000/v1/jobs/hello-world/trigger \
-  -H "Authorization: Bearer cin_<your_key>" | jq
-```
+Then start the worker and dev server as above.
 
 ## How to add a job
 

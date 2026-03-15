@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" data-theme="gruvbox-light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Cinnamon Dashboard</title>
+    <script>
+      (function () {
+        var t = localStorage.getItem("cinnamon-theme") || "gruvbox-light";
+        document.documentElement.setAttribute("data-theme", t);
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

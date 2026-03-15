@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import figlet from "figlet";
@@ -114,19 +116,19 @@ app.use("/api/dashboard/access-requests", async (c, next) => {
 const dashboardApi = createDashboardApi({ config, jobsQueue, jobHandlers, jobTeamIds });
 app.route("/api/dashboard", dashboardApi);
 
-app.use(
-  "/dashboard/*",
-  serveStatic({ root: "./dist/client", rewriteRequestPath: (p) => p.replace(/^\/dashboard/, "") }),
-);
-app.use(
-  "/dashboard",
-  serveStatic({ root: "./dist/client", rewriteRequestPath: () => "/index.html" }),
-);
-app.get("/dashboard/*", async (c) => {
-  const { default: fs } = await import("node:fs/promises");
-  const html = await fs.readFile("./dist/client/index.html", "utf-8");
-  return c.html(html);
-});
+const distClient = resolve(process.cwd(), "dist/client");
+if (existsSync(distClient)) {
+  app.use(
+    "/dashboard/*",
+    serveStatic({ root: distClient, rewriteRequestPath: (p) => p.replace(/^\/dashboard/, "") }),
+  );
+  app.use("/dashboard", serveStatic({ root: distClient, rewriteRequestPath: () => "/index.html" }));
+  app.get("/dashboard/*", async (c) => {
+    const { default: fs } = await import("node:fs/promises");
+    const html = await fs.readFile(resolve(distClient, "index.html"), "utf-8");
+    return c.html(html);
+  });
+}
 
 if (isDirectExecution(import.meta.url)) {
   const { port } = getEnv();

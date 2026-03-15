@@ -40,7 +40,11 @@ cli/
     schedules.ts      GET /v1/jobs/schedules (table)
     validate.ts       Validate cinnamon.config.ts locally (no server)
     init.ts           Scaffold ~/.cinnamon/config.json
-scripts/              Dev tools (seed team, migration drop, DB reset)
+create-cinnamon/      Scaffolder for new projects (bun create cinnamon)
+  index.ts            Interactive CLI (copies template, installs deps, inits git)
+  template/           Boilerplate files copied into new projects
+scripts/              Dev tools (seed team, migration drop, DB reset, release)
+  release.ts          Version bump, commit, tag, push
 src/
   index.ts            Trigger CLI entrypoint
   executors/
@@ -115,6 +119,7 @@ docs/                 Documentation
 | `bun run lint:fix`                   | Run Biome checks and auto-fix                      |
 | `bun run format`                     | Apply Biome formatting                             |
 | `bun run clean`                      | Remove `node_modules`                              |
+| `bun run release <version>`         | Bump versions, commit, tag, push                   |
 
 ## Docker deployment
 
@@ -148,6 +153,8 @@ docker compose up -d --build --force-recreate
 > **Note:** `--force-recreate` ensures the scheduler re-runs and reconciles any schedule changes. Without it, Docker may reuse an existing container if the image hash hasn't changed.
 
 ### Deploying to a remote machine
+
+The quickest way to bootstrap a fresh instance is `bun create cinnamon my-app` on the target machine. Alternatively, clone manually:
 
 1. Install Docker and Docker Compose on the target machine.
 2. Clone the repo and create `.env` from `.env.example`.

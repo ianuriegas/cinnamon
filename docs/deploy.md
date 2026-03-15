@@ -9,6 +9,8 @@ Cinnamon ships as a Docker Compose stack. The base `docker-compose.yml` provides
 
 ## Running locally
 
+For a new project, the fastest path is `bun create cinnamon my-app` -- see the [Getting started](../README.md#getting-started) guide. The sections below cover manual setup for existing clones.
+
 ### With Docker Compose
 
 ```bash
@@ -17,7 +19,7 @@ docker compose up -d postgres redis
 bun run db:migrate
 ```
 
-See the [Quick start](../README.md#quick-start) for the full setup.
+See the [Getting started](../README.md#getting-started) guide for the full setup.
 
 ### Without Docker (Postgres + Redis on host)
 
@@ -27,7 +29,7 @@ Install Postgres and Redis via Homebrew (macOS) or your package manager, then:
 cp .env.example .env
 # Set DATABASE_URL and REDIS_URL to localhost (e.g. postgresql://cinnamon@localhost:5432/cinnamon, redis://localhost:6379)
 bun run db:migrate
-bun run scripts/seed-team.ts
+bun run seed:team
 bun run worker   # terminal 1
 bun run dev      # terminal 2
 ```
@@ -49,23 +51,23 @@ See [`examples/deploy/docker/`](../examples/deploy/docker/) for a working overri
 Cinnamon publishes Docker images to GHCR on every tagged release. To create a release:
 
 ```bash
-git tag v0.0.1
-git push origin v0.0.1
+bun run release 0.1.0
 ```
 
-This triggers the release workflow (`.github/workflows/release.yml`) which:
+This bumps `package.json` versions, commits, tags, and pushes. The tag push triggers the release workflow (`.github/workflows/release.yml`) which:
 
 1. Runs the full check suite (lint, typecheck, test)
 2. Builds multi-arch Docker images (amd64 + arm64) and pushes to `ghcr.io/ianuriegas/cinnamon`
-3. Creates a GitHub Release with an auto-generated changelog
+3. Publishes `create-cinnamon` to npm
+4. Creates a GitHub Release with an auto-generated changelog
 
 Pull a specific version:
 
 ```bash
-docker pull ghcr.io/ianuriegas/cinnamon:0.0.1
+docker pull ghcr.io/ianuriegas/cinnamon:0.1.0
 ```
 
-Tags follow semver. The workflow produces `:{version}` (e.g. `:0.0.1`), `:{major}.{minor}` (e.g. `:0.0`), and `:{sha}` tags.
+Tags follow semver. The workflow produces `:{version}` (e.g. `:0.1.0`), `:{major}.{minor}` (e.g. `:0.1`), and `:{sha}` tags.
 
 ## CI/CD
 

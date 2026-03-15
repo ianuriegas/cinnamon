@@ -13,9 +13,9 @@ Authorization: Bearer cin_<your_key>
 Generate a key with the seed script:
 
 ```bash
-bun run scripts/seed-team.ts
-bun run scripts/seed-team.ts "Acme Corp"
-bun run scripts/seed-team.ts "Acme Corp" "acme-ci"
+bun run seed:team
+bun run seed:team "Acme Corp"
+bun run seed:team "Acme Corp" "acme-ci"
 ```
 
 - No arguments uses "Default Team".

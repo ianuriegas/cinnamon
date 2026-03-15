@@ -1,6 +1,6 @@
 {
   "name": "cinnamon",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Job orchestration framework powered by BullMQ, Postgres, and Hono.",
   "main": "src/index.ts",
   "scripts": {
@@ -27,7 +27,8 @@
     "worker": "bun run --watch src/worker.ts",
     "dev:dashboard": "vite",
     "build:dashboard": "vite build",
-    "dev": "trap 'kill 0' EXIT; bun run --watch src/server.ts & vite & wait"
+    "dev": "trap 'kill 0' EXIT; bun run --watch src/server.ts & vite & wait",
+    "release": "bun run scripts/release.ts"
   },
   "repository": {
     "type": "git",

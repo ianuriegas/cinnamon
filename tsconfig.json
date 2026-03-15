@@ -31,6 +31,8 @@
     "src/dashboard/hooks",
     "src/dashboard/contexts",
     "src/dashboard/lib",
-    "vite.config.js"
+    "vite.config.js",
+    "create-cinnamon/template",
+    "local"
   ]
 }

@@ -136,7 +136,9 @@ jobs:
         run: cd create-cinnamon && bun install
 
       - name: Publish
-        run: cd create-cinnamon && bun publish --access public
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          cd create-cinnamon && bun publish --access public
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 

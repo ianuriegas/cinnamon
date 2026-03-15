@@ -122,6 +122,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -136,11 +141,9 @@ jobs:
         run: cd create-cinnamon && bun install
 
       - name: Publish
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          cd create-cinnamon && bun publish --access public
+        run: cd create-cinnamon && npm publish --access public
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release:
     name: GitHub Release

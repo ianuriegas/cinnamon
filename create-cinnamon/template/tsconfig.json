@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "examples",
+    "src/dashboard/main.tsx",
+    "src/dashboard/App.tsx",
+    "src/dashboard/layouts",
+    "src/dashboard/pages",
+    "src/dashboard/components",
+    "src/dashboard/hooks",
+    "src/dashboard/contexts",
+    "src/dashboard/lib",
+    "vite.config.js"
+  ]
+}

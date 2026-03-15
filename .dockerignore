@@ -11,5 +11,6 @@ dist
 docs
 examples
 local
+create-cinnamon
 tests
 *.md

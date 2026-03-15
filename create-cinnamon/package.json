@@ -1,0 +1,29 @@
+{
+  "name": "create-cinnamon",
+  "version": "0.0.2",
+  "description": "Scaffold a new Cinnamon job orchestration project",
+  "type": "module",
+  "bin": {
+    "create-cinnamon": "index.ts"
+  },
+  "files": [
+    "index.ts",
+    "template/**"
+  ],
+  "keywords": [
+    "cinnamon",
+    "job-queue",
+    "bullmq",
+    "scaffolding",
+    "create"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianuriegas/cinnamon.git",
+    "directory": "create-cinnamon"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@clack/prompts": "^1.1.0"
+  }
+}

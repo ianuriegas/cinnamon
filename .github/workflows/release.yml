@@ -114,9 +114,35 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  publish-npm:
+    name: Publish create-cinnamon to npm
+    needs: checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd create-cinnamon
+          bun -e "const p=JSON.parse(await Bun.file('package.json').text()); p.version='$VERSION'; await Bun.write('package.json', JSON.stringify(p,null,2)+'\n')"
+
+      - name: Install dependencies
+        run: cd create-cinnamon && bun install
+
+      - name: Publish
+        run: cd create-cinnamon && bun publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
   release:
     name: GitHub Release
-    needs: [checks, publish]
+    needs: [checks, publish, publish-npm]
     runs-on: ubuntu-latest
 
     steps:
@@ -128,30 +154,18 @@ jobs:
         id: changelog
         run: |
           PREV_TAG=$(git tag --sort=-version:refname | head -n 2 | tail -n 1)
+          echo "body<<CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
           if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "${{ github.ref_name }}" ]; then
-            echo "body<<CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
-            echo "Initial release." >> "$GITHUB_OUTPUT"
+            echo "## Changes" >> "$GITHUB_OUTPUT"
             echo "" >> "$GITHUB_OUTPUT"
-            echo "## What's included" >> "$GITHUB_OUTPUT"
-            echo "" >> "$GITHUB_OUTPUT"
-            echo "- Job orchestration framework powered by BullMQ, Postgres, and Hono" >> "$GITHUB_OUTPUT"
-            echo "- Language-agnostic job execution (Python, Bash, Node, any shell command)" >> "$GITHUB_OUTPUT"
-            echo "- Multi-tenant teams with API key isolation" >> "$GITHUB_OUTPUT"
-            echo "- REST API and React dashboard" >> "$GITHUB_OUTPUT"
-            echo "- CLI for triggering and monitoring jobs" >> "$GITHUB_OUTPUT"
-            echo "- Cron scheduling via BullMQ repeatable jobs" >> "$GITHUB_OUTPUT"
-            echo "- Slack, Discord, and generic webhook notifications" >> "$GITHUB_OUTPUT"
-            echo "- Google OAuth dashboard auth with RBAC" >> "$GITHUB_OUTPUT"
-            echo "- Docker Compose deployment" >> "$GITHUB_OUTPUT"
-            echo "CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+            git log --pretty=format:"- %s (%h)" --no-merges >> "$GITHUB_OUTPUT"
           else
-            echo "body<<CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
             echo "## Changes since $PREV_TAG" >> "$GITHUB_OUTPUT"
             echo "" >> "$GITHUB_OUTPUT"
             git log "$PREV_TAG"..HEAD --pretty=format:"- %s (%h)" --no-merges >> "$GITHUB_OUTPUT"
-            echo "" >> "$GITHUB_OUTPUT"
-            echo "CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
           fi
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

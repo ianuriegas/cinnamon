@@ -1,0 +1,12 @@
+.env
+.env.local
+!.env.example
+
+node_modules/
+.venv/
+package-lock.json
+dist/
+
+.DS_Store
+
+*secret*.json

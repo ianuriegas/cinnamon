@@ -1,0 +1,17 @@
+{
+  "name": "{{PROJECT_NAME}}",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Job orchestration powered by Cinnamon",
+  "scripts": {
+    "dev": "cd cinnamon && bun run dev",
+    "worker": "cd cinnamon && bun run worker",
+    "scheduler": "cd cinnamon && bun run scheduler",
+    "server": "cd cinnamon && bun run server",
+    "db:migrate": "cd cinnamon && bun run db:migrate",
+    "seed:team": "cd cinnamon && bun run seed:team",
+    "generate:secret": "cd cinnamon && bun run generate:secret",
+    "infra": "cd cinnamon && docker compose up -d postgres redis",
+    "infra:down": "cd cinnamon && docker compose down"
+  }
+}

@@ -12,7 +12,7 @@ Uses Bun's built-in test runner. Run with `bun test`.
 | `config/dynamic-registry.ts`  | Registry building, collision detection, config handler wiring |
 | `jobs/cinnamon/`              | Start value parsing (`parseStart`)                            |
 | `src/executors/shell.ts`      | Shell executor, timeout, error handling (`runShellJob`)       |
-| `jobs/_shared/`               | Direct execution detection (`isDirectExecution`)              |
+| `src/lib/is-direct-execution` | Direct execution detection (`isDirectExecution`)              |
 | `db/schema/`                  | Multi-tenant schema (teams, api_keys, jobs_log with team_id)  |
 | `src/server.ts`               | API server endpoints (health, auth, enqueue validation)       |
 | `src/routes/jobs.ts`          | Jobs observability API (list, detail, definitions, schedules, trigger) |

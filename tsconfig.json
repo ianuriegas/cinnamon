@@ -32,7 +32,7 @@
     "src/dashboard/contexts",
     "src/dashboard/lib",
     "vite.config.js",
-    "create-cinnamon/template",
+    "create-cinnamon/templates",
     "local"
   ]
 }

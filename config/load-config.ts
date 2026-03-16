@@ -166,7 +166,8 @@ let _config: CinnamonConfig | null = null;
 export async function loadConfig(): Promise<CinnamonConfig> {
   if (_config) return _config;
 
-  const mod = await import("@/cinnamon.config.ts");
+  const configPath = process.env.CINNAMON_CONFIG_PATH ?? "@/cinnamon.config.ts";
+  const mod = await import(configPath);
   const raw = mod.default ?? mod;
   _config = validateConfig(raw);
   return _config;

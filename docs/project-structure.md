@@ -14,7 +14,6 @@ db/
   schema/             Drizzle table definitions (cinnamon.jobs_log, cinnamon.teams, cinnamon.api_keys, cinnamon.users, cinnamon.user_teams, cinnamon.access_requests)
   migrations/         Generated SQL migrations (single 0000 creates cinnamon schema + tables)
 jobs/
-  _shared/            Shared utilities (isDirectExecution)
   cinnamon/           Countdown demo job (config-driven)
   require-package-ts/ TypeScript job with npm package (nanoid)
   require-package-py/ Python job with uv + pyproject.toml (humanize)

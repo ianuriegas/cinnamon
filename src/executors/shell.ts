@@ -8,7 +8,7 @@
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { UnrecoverableError } from "bullmq";
-import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SIGKILL_GRACE_MS = 3_000;

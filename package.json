@@ -9,7 +9,7 @@
     "db:drop": "bun run scripts/db-drop.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run db/migrate.ts",
-    "cinnamon:migrate": "bun run db/migrate.ts",
+
     "db:reset-local": "bun run scripts/db-reset-local.ts",
     "seed:team": "bun run scripts/seed-team.ts",
     "format": "biome format --write .",

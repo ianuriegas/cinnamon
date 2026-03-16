@@ -103,6 +103,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
             type=sha,prefix=
 
       - name: Build and push
@@ -136,6 +137,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           cd create-cinnamon
           bun -e "const p=JSON.parse(await Bun.file('package.json').text()); p.version='$VERSION'; await Bun.write('package.json', JSON.stringify(p,null,2)+'\n')"
+          sed -i "s/CINNAMON_VERSION:-latest/CINNAMON_VERSION:-$VERSION/" templates/docker/docker-compose.yml
 
       - name: Install dependencies
         run: cd create-cinnamon && bun install

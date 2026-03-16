@@ -36,16 +36,6 @@ bun run dev      # terminal 2
 
 For Python jobs that use `uv`, install [uv](https://docs.astral.sh/uv/getting-started/installation/) and ensure it's in your `PATH` before starting the worker.
 
-## Running as a submodule
-
-Use Docker Compose merge to layer your project's config on top of cinnamon:
-
-```bash
-docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up -d
-```
-
-See [`examples/deploy/docker/`](../examples/deploy/docker/) for a working override template.
-
 ## Releases and Docker images
 
 Cinnamon publishes Docker images to GHCR on every tagged release. To create a release:
@@ -67,7 +57,7 @@ Pull a specific version:
 docker pull ghcr.io/ianuriegas/cinnamon:0.1.0
 ```
 
-Tags follow semver. The workflow produces `:{version}` (e.g. `:0.1.0`), `:{major}.{minor}` (e.g. `:0.1`), and `:{sha}` tags.
+Tags follow semver. The workflow produces `:{version}` (e.g. `:0.2.0`), `:{major}.{minor}` (e.g. `:0.2`), `:latest`, and `:{sha}` tags.
 
 ## CI/CD
 

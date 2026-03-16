@@ -7,7 +7,7 @@ x-app-image: &app-image
 
 x-app-volumes: &app-volumes
   - ./cinnamon.config.ts:/app/cinnamon.config.ts:ro
-  - ./jobs:/app/jobs:ro
+  - ./jobs:/app/jobs
 
 services:
   postgres:

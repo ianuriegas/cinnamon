@@ -31,11 +31,10 @@ cd my-app
 
 The wizard lets you choose a setup mode:
 
-- **Docker Image** (recommended) -- runs cinnamon via pre-built Docker image. Requires Docker.
-- **Git Submodule** -- pins cinnamon source as a submodule. Run services locally with Bun.
-- **Full Source** -- copies the full cinnamon source into your project.
+- **Docker Image** (recommended) -- runs cinnamon via a pre-built Docker image. Requires Docker.
+- **Full Source** -- copies the full cinnamon source into your project. Run services locally with Bun.
 
-All three modes use the same commands:
+Both modes use the same commands:
 
 ```bash
 bun run db:migrate

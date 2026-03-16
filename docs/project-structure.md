@@ -23,7 +23,6 @@ jobs/
   retention/          Prune job runs older than N days (scheduled daily)
 examples/             Reference implementations (not part of core)
   jobs/spotify/       Spotify integration example
-  deploy/docker/         Docker Compose override example
   deploy/github-actions/ Reference CI/CD deploy workflow
   deploy/kubernetes/     Minimal K8s manifests (preview)
 cli/
@@ -108,7 +107,7 @@ docs/                 Documentation
 | `bun run seed:team [name] [label]`  | Create a team and API key (alias for `scripts/seed-team.ts`)   |
 | `bun run generate:secret`            | Generate a random `SESSION_SECRET` for dashboard auth |
 | `bun run db:migrate`                 | Apply pending Drizzle migrations                   |
-| `bun run cinnamon:migrate`           | Alias for `db:migrate`                             |
+
 | `bun run db:generate`                | Generate a migration from schema changes           |
 | `bun run db:drop`                    | Interactively drop the latest migration            |
 | `bun run db:reset-local`             | Drop, recreate, and migrate local database         |

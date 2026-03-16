@@ -22,8 +22,6 @@ Apply pending migrations:
 
 ```bash
 bun run db:migrate
-# or equivalently:
-bun run cinnamon:migrate
 ```
 
 Reset the local database (drops everything and re-applies all migrations):

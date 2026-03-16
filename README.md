@@ -22,33 +22,28 @@ flowchart LR
 
 ## Getting started
 
-Requires [Bun](https://bun.sh) and Docker Compose.
-
-### New project
-
-The fastest way to start is `bun create cinnamon`:
+Requires [Bun](https://bun.sh).
 
 ```bash
 bun create cinnamon my-app
 cd my-app
 ```
 
-The scaffolding wizard sets up a working Cinnamon instance with Postgres, Redis, the dashboard, and an example job. Start infrastructure, then run:
+The wizard lets you choose a setup mode:
+
+- **Docker Image** (recommended) -- runs cinnamon via pre-built Docker image. Requires Docker.
+- **Git Submodule** -- pins cinnamon source as a submodule. Run services locally with Bun.
+- **Full Source** -- copies the full cinnamon source into your project.
+
+All three modes use the same commands:
 
 ```bash
-docker compose up -d postgres redis
 bun run db:migrate
 bun run seed:team              # creates a team + API key (save the cin_... key)
+bun run dev
 ```
 
-Open two terminals:
-
-```bash
-bun run worker   # terminal 1
-bun run dev      # terminal 2
-```
-
-Open `http://localhost:5173/dashboard` to view the dashboard.
+Open the dashboard at the URL shown after `bun run dev`.
 
 ```bash
 cinnamon init                   # paste your API key when prompted
@@ -70,7 +65,7 @@ bun run db:migrate
 bun run seed:team
 ```
 
-Then start the worker and dev server as above.
+Then start the worker and dev server with `bun run dev`.
 
 ## How to add a job
 
@@ -142,36 +137,6 @@ Jobs can send webhooks on success or failure. Cinnamon auto-detects Discord and 
 ```
 
 `${VAR}` references are resolved from environment variables at runtime.
-
-## Using as a submodule
-
-Cinnamon is designed to be added as a git submodule inside your project. This keeps your jobs and config in your repo while pulling in the framework.
-
-```bash
-git submodule add https://github.com/ianuriegas/cinnamon.git cinnamon
-```
-
-### Docker Compose merge
-
-Use Docker Compose's [merge](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/) feature to layer your app on top of cinnamon's base services:
-
-```bash
-docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up -d
-```
-
-Your override file adds project-specific config (env vars, volumes, extra services) while inheriting Postgres, Redis, worker, scheduler, and API from cinnamon.
-
-See [`examples/deploy/docker/`](examples/deploy/docker/) for a working override example.
-
-### Migrations
-
-Cinnamon tables live in a dedicated `cinnamon` Postgres schema, so they never collide with your app's tables. Run cinnamon's migrations separately from your own:
-
-```bash
-cd cinnamon && bun run cinnamon:migrate && cd ..
-```
-
-See [Migrations](docs/migrations.md) for the full dual-migration setup.
 
 ## Dashboard auth (optional)
 

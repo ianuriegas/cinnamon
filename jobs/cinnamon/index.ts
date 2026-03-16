@@ -5,7 +5,7 @@
  */
 
 import figlet from "figlet";
-import { isDirectExecution } from "../_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 
 const DEFAULT_START = 10;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,4 +1,4 @@
-import { isDirectExecution } from "../../_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 import { runSpotifyRecentlyPlayedJob } from "./ingest.ts";
 import type { SpotifyRecentlyPlayedJobPayload } from "./types.ts";
 

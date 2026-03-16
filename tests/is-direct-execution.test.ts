@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 
 describe("isDirectExecution", () => {
   test("returns false for a non-matching import.meta.url", () => {

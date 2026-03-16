@@ -10,7 +10,7 @@ import { and, isNotNull, lt } from "drizzle-orm";
 
 import { db, pool } from "@/db/index.ts";
 import { jobsLog } from "@/db/schema/jobs-log.ts";
-import { isDirectExecution } from "../_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 
 const DEFAULT_RETENTION_DAYS = 60;
 

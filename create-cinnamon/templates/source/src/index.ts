@@ -1,6 +1,6 @@
 import { getJobOptions } from "@/config/dynamic-registry.ts";
 import { loadConfig } from "@/config/load-config.ts";
-import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 import { parsePayloadArg } from "./payload.ts";
 import { jobsQueue } from "./queue.ts";
 

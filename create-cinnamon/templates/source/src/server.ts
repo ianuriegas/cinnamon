@@ -12,12 +12,12 @@ import { loadConfig } from "@/config/load-config.ts";
 import { getRedisPublisher } from "@/config/redis-pubsub.ts";
 import { resolveTeams } from "@/config/resolve-teams.ts";
 import { pool } from "@/db/index.ts";
-import { isDirectExecution } from "@/jobs/_shared/is-direct-execution.ts";
 import { csrfMiddleware } from "@/src/auth/csrf.ts";
 import { dashboardAuthMiddleware } from "@/src/auth/dashboard-middleware.ts";
 import { createAuthRoutes } from "@/src/auth/routes.ts";
 import { superAdminMiddleware } from "@/src/auth/super-admin-middleware.ts";
 import { createDashboardApi } from "@/src/dashboard/api.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 import { isJobVisibleToTeam } from "@/src/lib/team-utils.ts";
 import { authMiddleware } from "@/src/middleware/auth.ts";
 import { createJobsRouter } from "@/src/routes/jobs.ts";
@@ -122,10 +122,7 @@ if (existsSync(distClient)) {
     "/dashboard/*",
     serveStatic({ root: distClient, rewriteRequestPath: (p) => p.replace(/^\/dashboard/, "") }),
   );
-  app.use(
-    "/dashboard",
-    serveStatic({ root: distClient, rewriteRequestPath: () => "/index.html" }),
-  );
+  app.use("/dashboard", serveStatic({ root: distClient, rewriteRequestPath: () => "/index.html" }));
   app.get("/dashboard/*", async (c) => {
     const { default: fs } = await import("node:fs/promises");
     const html = await fs.readFile(resolve(distClient, "index.html"), "utf-8");

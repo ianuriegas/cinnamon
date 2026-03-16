@@ -7,7 +7,7 @@
 
 import { nanoid } from "nanoid";
 
-import { isDirectExecution } from "../_shared/is-direct-execution.ts";
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
 
 type RequirePackageTsPayload = {
   count?: number;

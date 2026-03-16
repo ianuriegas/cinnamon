@@ -8,7 +8,7 @@
   },
   "files": [
     "index.ts",
-    "template/**"
+    "templates/**"
   ],
   "keywords": [
     "cinnamon",

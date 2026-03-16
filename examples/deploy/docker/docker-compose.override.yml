@@ -1,7 +1,7 @@
-# Docker Compose override for projects using cinnamon as a submodule.
+# Docker Compose override example.
 #
 # Usage:
-#   docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
 #
 # This file extends cinnamon's base services with project-specific config.
 # Cinnamon provides: postgres, redis, migrate, worker, scheduler, api.

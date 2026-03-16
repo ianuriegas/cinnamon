@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { execSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   cpSync,
   existsSync,
@@ -7,7 +8,6 @@ import {
   readFileSync,
   renameSync,
   rmSync,
-  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -18,7 +18,7 @@ import * as p from "@clack/prompts";
 
 const TEMPLATES_DIR = join(fileURLToPath(import.meta.url), "..", "templates");
 
-type Mode = "docker" | "submodule" | "source";
+type Mode = "docker" | "source";
 
 function isCancel(value: unknown): value is symbol {
   return p.isCancel(value);
@@ -83,7 +83,6 @@ async function main() {
         label: "Docker Image (recommended)",
         hint: "uses pre-built image from GHCR",
       },
-      { value: "submodule", label: "Git Submodule", hint: "pins cinnamon source as a submodule" },
       { value: "source", label: "Full Source", hint: "copies full cinnamon source into project" },
     ],
   })) as Mode;
@@ -91,7 +90,7 @@ async function main() {
   if (isCancel(mode)) cancelAndExit();
 
   // Docker mode: DB/Redis are configured via .env, no need to prompt
-  // Submodule and Source modes: prompt for connection strings
+  // Source mode: prompt for connection strings
   let databaseUrl = "postgresql://cinnamon:change-me@localhost:5432/cinnamon";
   let redisUrl = "redis://localhost:6379";
   let includeExampleJobs = true;
@@ -154,20 +153,45 @@ async function main() {
     }
   }
 
+  // Dashboard auth (both modes)
+  let authEnabled = false;
+  let superAdminEmails = "";
+
+  const setupAuth = await p.confirm({
+    message: "Set up Google OAuth for the dashboard? (can be done later)",
+    initialValue: false,
+  });
+  if (isCancel(setupAuth)) cancelAndExit();
+
+  if (setupAuth) {
+    const emails = (await p.text({
+      message: "Super admin email(s) (comma-separated for multiple)",
+      placeholder: "you@gmail.com, teammate@gmail.com",
+      validate: (v) => {
+        if (!v?.trim()) return "At least one email is required";
+        const list = v
+          .split(",")
+          .map((e) => e.trim())
+          .filter(Boolean);
+        if (list.length === 0) return "At least one email is required";
+        const bad = list.find((e) => !e.includes("@"));
+        if (bad) return `Invalid email: ${bad}`;
+      },
+    })) as string;
+    if (isCancel(emails)) cancelAndExit();
+
+    authEnabled = true;
+    superAdminEmails = emails
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean)
+      .join(",");
+  }
+
   const s = p.spinner();
 
   if (mode === "docker") {
     await scaffoldDocker({ targetDir, projectName, includeExampleJobs, s });
-  } else if (mode === "submodule") {
-    await scaffoldSubmodule({
-      targetDir,
-      projectName,
-      databaseUrl,
-      redisUrl,
-      includeExampleJobs,
-      runMigrate,
-      s,
-    });
   } else {
     await scaffoldSource({
       targetDir,
@@ -180,7 +204,11 @@ async function main() {
     });
   }
 
-  printNextSteps(mode, dir);
+  if (authEnabled) {
+    writeAuthEnv(targetDir, superAdminEmails);
+  }
+
+  printNextSteps(mode, dir, authEnabled);
   p.outro("Your Cinnamon project is ready!");
 }
 
@@ -201,124 +229,20 @@ async function scaffoldDocker({ targetDir, projectName, includeExampleJobs, s }:
   renameIfExists(targetDir, "gitignore", ".gitignore");
   removeExampleJobsIfNeeded(targetDir, includeExampleJobs);
   generatePackageJson(targetDir, projectName);
+  fillReadmeProjectName(targetDir, projectName);
   generateEnvFromExample(targetDir);
 
   s.stop("Template files copied.");
 
+  s.start("Pulling Docker image...");
+  try {
+    execSync("docker compose pull", { cwd: targetDir, stdio: "ignore", timeout: 120_000 });
+    s.stop("Docker image pulled.");
+  } catch {
+    s.stop("Could not pull image now. It will be pulled on first `bun run dev`.");
+  }
+
   initGitRepo(targetDir, s);
-}
-
-// ── Submodule mode ───────────────────────────────────────────────────
-
-interface SubmoduleOpts {
-  targetDir: string;
-  projectName: string;
-  databaseUrl: string;
-  redisUrl: string;
-  includeExampleJobs: boolean;
-  runMigrate: boolean;
-  s: ReturnType<typeof p.spinner>;
-}
-
-async function scaffoldSubmodule({
-  targetDir,
-  projectName,
-  databaseUrl,
-  redisUrl,
-  includeExampleJobs,
-  runMigrate,
-  s,
-}: SubmoduleOpts) {
-  s.start("Copying template files...");
-  mkdirSync(targetDir, { recursive: true });
-  cpSync(join(TEMPLATES_DIR, "submodule"), targetDir, { recursive: true });
-
-  renameIfExists(targetDir, "gitignore", ".gitignore");
-  removeExampleJobsIfNeeded(targetDir, includeExampleJobs);
-  generatePackageJson(targetDir, projectName);
-
-  s.stop("Template files copied.");
-
-  // Initialize git and add submodule
-  s.start("Adding cinnamon submodule...");
-  try {
-    execSync("git init -b main", { cwd: targetDir, stdio: "ignore" });
-    execSync("git submodule add https://github.com/ianuriegas/cinnamon.git cinnamon", {
-      cwd: targetDir,
-      stdio: "ignore",
-    });
-    s.stop("Submodule added.");
-  } catch {
-    s.stop(
-      "Failed to add submodule. Run `git submodule add https://github.com/ianuriegas/cinnamon.git cinnamon` manually.",
-    );
-  }
-
-  const cinnamonDir = join(targetDir, "cinnamon");
-
-  // Symlink config and jobs into the submodule so it finds them
-  s.start("Linking config and jobs into submodule...");
-  try {
-    const configSrc = join(targetDir, "cinnamon.config.ts");
-    const configDst = join(cinnamonDir, "cinnamon.config.ts");
-    if (existsSync(configSrc) && existsSync(cinnamonDir)) {
-      if (existsSync(configDst)) unlinkSync(configDst);
-      symlinkSync("../cinnamon.config.ts", configDst);
-    }
-
-    const jobsSrc = join(targetDir, "jobs");
-    const jobsDst = join(cinnamonDir, "jobs");
-    if (existsSync(jobsSrc) && existsSync(cinnamonDir)) {
-      if (existsSync(jobsDst)) rmSync(jobsDst, { recursive: true, force: true });
-      symlinkSync("../jobs", jobsDst);
-    }
-    s.stop("Config and jobs linked.");
-  } catch {
-    s.stop(
-      "Failed to create symlinks. You may need to link cinnamon.config.ts and jobs/ manually.",
-    );
-  }
-
-  // Generate .env in submodule directory (where cinnamon reads it)
-  if (existsSync(join(cinnamonDir, ".env.example"))) {
-    generateEnvWithUrls(cinnamonDir, databaseUrl, redisUrl);
-  }
-  // Also write .env.local for Vite dev server
-  writeFileSync(join(cinnamonDir, ".env.local"), "BASE_URL=http://localhost:5173\n");
-
-  // Install dependencies inside submodule
-  s.start("Installing dependencies...");
-  try {
-    execSync("bun install", { cwd: cinnamonDir, stdio: "ignore" });
-    s.stop("Dependencies installed.");
-  } catch {
-    s.stop("Failed to install dependencies. Run `cd cinnamon && bun install` manually.");
-  }
-
-  // Optionally run migrations
-  if (runMigrate) {
-    s.start("Running database migrations...");
-    try {
-      execSync("bun run db:migrate", { cwd: cinnamonDir, stdio: "ignore", timeout: 30_000 });
-      s.stop("Migrations complete.");
-    } catch {
-      s.stop(
-        "Migration failed. Make sure Postgres is running and run `bun run db:migrate` manually.",
-      );
-    }
-  }
-
-  // Commit everything
-  s.start("Creating initial commit...");
-  try {
-    execSync("git add -A && git commit -m 'Initial commit'", {
-      cwd: targetDir,
-      stdio: "ignore",
-    });
-    s.stop("Git repository initialized.");
-  } catch {
-    s.stop("Git commit failed. You can commit manually.");
-  }
 }
 
 // ── Source mode (original behavior) ──────────────────────────────────
@@ -362,6 +286,7 @@ async function scaffoldSource({
   }
 
   generatePackageJson(targetDir, projectName);
+  fillReadmeProjectName(targetDir, projectName);
   generateEnvWithUrls(targetDir, databaseUrl, redisUrl);
   writeFileSync(join(targetDir, ".env.local"), "BASE_URL=http://localhost:5173\n");
 
@@ -416,6 +341,13 @@ function generatePackageJson(targetDir: string, projectName: string) {
   unlinkSync(tmplPath);
 }
 
+function fillReadmeProjectName(targetDir: string, projectName: string) {
+  const readmePath = join(targetDir, "README.md");
+  if (!existsSync(readmePath)) return;
+  const content = readFileSync(readmePath, "utf-8").replace(/\{\{PROJECT_NAME\}\}/g, projectName);
+  writeFileSync(readmePath, content);
+}
+
 function generateEnvFromExample(targetDir: string) {
   const envExamplePath = join(targetDir, ".env.example");
   if (!existsSync(envExamplePath)) return;
@@ -447,6 +379,17 @@ function generateEnvWithUrls(targetDir: string, databaseUrl: string, redisUrl: s
   writeFileSync(join(targetDir, ".env"), envContent);
 }
 
+function writeAuthEnv(targetDir: string, superAdminEmails: string) {
+  const envPath = join(targetDir, ".env");
+  const sessionSecret = randomBytes(32).toString("base64");
+  let content = readFileSync(envPath, "utf-8");
+
+  content = content.replace(/^# SESSION_SECRET=.*$/m, `SESSION_SECRET=${sessionSecret}`);
+  content = content.replace(/^# SUPER_ADMINS=.*$/m, `SUPER_ADMINS=${superAdminEmails}`);
+
+  writeFileSync(envPath, content);
+}
+
 function initGitRepo(targetDir: string, s: ReturnType<typeof p.spinner>) {
   s.start("Initializing git repository...");
   try {
@@ -460,7 +403,16 @@ function initGitRepo(targetDir: string, s: ReturnType<typeof p.spinner>) {
   }
 }
 
-function printNextSteps(mode: Mode, dir: string) {
+function printNextSteps(mode: Mode, dir: string, authEnabled: boolean) {
+  const authLines = authEnabled
+    ? [
+        "",
+        "# Dashboard auth is enabled. Add your Google OAuth credentials:",
+        "# Place client_secret.json in the project root, or set",
+        "# GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env",
+      ]
+    : [];
+
   if (mode === "docker") {
     p.note(
       [
@@ -479,25 +431,7 @@ function printNextSteps(mode: Mode, dir: string) {
         "bun run logs",
         "",
         "# Dashboard: http://localhost:3000/dashboard",
-      ].join("\n"),
-      "Next steps",
-    );
-  } else if (mode === "submodule") {
-    p.note(
-      [
-        `cd ${dir}`,
-        "",
-        "# Start Postgres + Redis:",
-        "bun run infra",
-        "",
-        "# Run migrations and seed a team:",
-        "bun run db:migrate",
-        "bun run seed:team",
-        "",
-        "# Start dev server + dashboard:",
-        "bun run dev",
-        "",
-        "# Dashboard: http://localhost:5173/dashboard",
+        ...authLines,
       ].join("\n"),
       "Next steps",
     );
@@ -517,6 +451,11 @@ function printNextSteps(mode: Mode, dir: string) {
         "",
         "# Start dev server + dashboard:",
         "bun run dev",
+        "",
+        "# In separate terminals:",
+        "bun run worker",
+        "bun run scheduler",
+        ...authLines,
       ].join("\n"),
       "Next steps",
     );

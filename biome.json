@@ -13,7 +13,7 @@
     }
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.tsx", "!create-cinnamon/template", "!local"]
+    "includes": ["**/*.ts", "**/*.tsx", "!create-cinnamon/templates", "!local"]
   },
   "overrides": [
     {

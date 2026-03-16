@@ -1,21 +1,11 @@
 # Docker Compose override example
 
-When cinnamon is a git submodule, use Docker Compose's merge feature to layer your project's config on top of cinnamon's base services.
-
-## Setup
-
-```
-your-project/
-  cinnamon/                          # git submodule
-    docker-compose.yml               # base services (postgres, redis, worker, api, etc.)
-  docker-compose.override.yml        # your overrides (copy from this example)
-  .env                               # your env vars
-```
+Use Docker Compose's merge feature to layer project-specific configuration on top of cinnamon's base services.
 
 ## Usage
 
 ```bash
-docker compose -f cinnamon/docker-compose.yml -f docker-compose.override.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
 ```
 
 This merges both files. Cinnamon provides the infrastructure (Postgres, Redis, worker, scheduler, API server, migration runner). Your override adds project-specific configuration.

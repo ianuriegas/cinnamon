@@ -1,0 +1,35 @@
+/**
+ * Example custom schema — rename this file to remove .bak and edit it.
+ *
+ * Tables defined here live in the `public` schema by default, keeping
+ * them isolated from Cinnamon's internal `cinnamon.*` tables.
+ *
+ * After editing, generate a migration:
+ *
+ *   bun run db:generate
+ *
+ * Then apply it:
+ *
+ *   bun run db:migrate
+ *
+ * To add a foreign key to a Cinnamon table, edit the generated SQL
+ * migration and add the constraint manually:
+ *
+ *   ALTER TABLE "metrics"
+ *     ADD CONSTRAINT "metrics_team_id_fk"
+ *     FOREIGN KEY ("team_id") REFERENCES "cinnamon"."teams"("id");
+ */
+import {
+  integer,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+export const metrics = pgTable("metrics", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  value: integer("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

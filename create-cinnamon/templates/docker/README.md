@@ -15,7 +15,9 @@ Dashboard: http://localhost:3000/dashboard
 | Command | What it does |
 |---|---|
 | `bun run dev` | Start all services (Postgres, Redis, API, worker, scheduler) |
-| `bun run db:migrate` | Run database migrations |
+| `bun run db:migrate` | Run database migrations (core + custom) |
+| `bun run db:generate` | Generate a migration from your custom schema |
+| `bun run db:drop` | Drop the latest custom migration (file only) |
 | `bun run seed:team` | Create a team + API key |
 | `bun run worker` | Start only the worker |
 | `bun run scheduler` | Start only the scheduler |
@@ -31,6 +33,61 @@ Dashboard: http://localhost:3000/dashboard
 3. Trigger via CLI (`cinnamon trigger <name>`) or API
 
 The `jobs/` directory is volume-mounted into the container, so changes take effect immediately.
+
+## Custom tables
+
+You can add your own database tables without forking Cinnamon. Custom tables live
+in the `public` schema, isolated from Cinnamon's internal `cinnamon.*` tables.
+Your migrations are tracked independently, so upgrading the Cinnamon image never
+interferes with your data.
+
+### 1. Define your schema
+
+Create a file in `db/schema/` using [Drizzle ORM](https://orm.drizzle.team/docs/sql-schema-declaration) syntax. See `db/schema/example.ts.bak` for a starter template.
+
+```ts
+// db/schema/metrics.ts
+import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+
+export const metrics = pgTable("metrics", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  value: integer("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+```
+
+### 2. Generate a migration
+
+```bash
+bun run db:generate
+```
+
+This diffs your schema files against the current migration state and writes a new
+SQL migration to `db/migrations/`.
+
+### 3. Apply it
+
+```bash
+bun run db:migrate
+```
+
+Both Cinnamon's core migrations and your custom migrations run automatically.
+
+### Undo a migration
+
+To remove the latest custom migration file (before it's been applied):
+
+```bash
+bun run db:drop
+```
+
+This only removes the local SQL file. If the migration was already applied to
+the database, you'll need to manually revert the changes or recreate the database.
+
+> **Tip:** To add a foreign key to a Cinnamon table, edit the generated SQL
+> migration and add the constraint manually, e.g.
+> `FOREIGN KEY ("team_id") REFERENCES "cinnamon"."teams"("id")`.
 
 ## Updating cinnamon
 

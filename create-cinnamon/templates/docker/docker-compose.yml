@@ -8,6 +8,7 @@ x-app-image: &app-image
 x-app-volumes: &app-volumes
   - ./cinnamon.config.ts:/app/cinnamon.config.ts:ro
   - ./jobs:/app/jobs
+  - ./db/migrations:/app/db/custom-migrations:ro
 
 services:
   postgres:
@@ -45,6 +46,8 @@ services:
     env_file: .env
     environment:
       <<: *app-env
+    volumes:
+      - ./db/migrations:/app/db/custom-migrations:ro
     command: ["bun", "run", "db:migrate"]
     depends_on:
       postgres:

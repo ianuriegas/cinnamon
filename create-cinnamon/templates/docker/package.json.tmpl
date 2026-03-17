@@ -9,6 +9,8 @@
     "scheduler": "docker compose up scheduler",
     "server": "docker compose up api",
     "db:migrate": "docker compose run -T --rm migrate",
+    "db:generate": "bunx drizzle-kit generate --config db/drizzle.config.ts",
+    "db:drop": "bunx drizzle-kit drop --config db/drizzle.config.ts",
     "seed:team": "docker compose run -T --rm api bun run seed:team",
     "generate:secret": "openssl rand -base64 32",
     "logs": "docker compose logs -f",

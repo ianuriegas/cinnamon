@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
@@ -14,7 +14,7 @@ import { userTeams } from "@/db/schema/user-teams.ts";
 import { users } from "@/db/schema/users.ts";
 import { JOB_STATUS } from "@/src/job-types.ts";
 import { generateApiKey } from "@/src/lib/api-key-utils.ts";
-import { isJobVisibleToAnyTeam } from "@/src/lib/team-utils.ts";
+import { getDefaultJobNames, isDefaultJob, isJobVisibleToAnyTeam } from "@/src/lib/team-utils.ts";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -68,6 +68,21 @@ export function createDashboardApi({
 }: DashboardApiDeps) {
   const router = new Hono<DashboardEnv>();
 
+  const defaultJobNames = getDefaultJobNames(config.jobs, jobTeamIds);
+
+  /**
+   * SQL condition that includes runs belonging to the user's teams
+   * OR runs for default jobs (no team restriction) with team_id = null.
+   */
+  function teamRunsFilter(userTeamIds: number[]) {
+    const ownTeams = inArray(jobsLog.teamId, userTeamIds);
+    if (defaultJobNames.length > 0) {
+      const defaultRuns = and(isNull(jobsLog.teamId), inArray(jobsLog.jobName, defaultJobNames));
+      return or(ownTeams, defaultRuns) ?? ownTeams;
+    }
+    return ownTeams;
+  }
+
   function parseRunsQuery(c: { req: { query(k: string): string | undefined } }) {
     const limitParam = Math.min(Number(c.req.query("limit")) || DEFAULT_LIMIT, MAX_LIMIT);
     const offsetParam = Math.max(Number(c.req.query("offset")) || 0, 0);
@@ -95,21 +110,23 @@ export function createDashboardApi({
     const all = [...conditions];
     if (!user.isSuperAdmin) {
       if (userTeamIds.length === 0) {
-        all.push(sql`1 = 0`); // No teams: return no rows (Phase 6 middleware blocks before this)
+        all.push(sql`1 = 0`);
       } else {
-        all.push(inArray(jobsLog.teamId, userTeamIds));
+        all.push(teamRunsFilter(userTeamIds));
       }
     }
     return all.length > 0 ? and(...all) : undefined;
   }
 
   function canAccessRun(
-    row: { teamId: number | null },
+    row: { teamId: number | null; jobName: string },
     user: DashboardUser,
     userTeamIds: number[],
   ): boolean {
     if (user.isSuperAdmin) return true;
-    if (row.teamId == null) return false;
+    if (row.teamId == null) {
+      return userTeamIds.length > 0 && isDefaultJob(row.jobName, jobTeamIds);
+    }
     return userTeamIds.includes(row.teamId);
   }
 
@@ -374,9 +391,7 @@ export function createDashboardApi({
     const user = c.get("user");
     const userTeamIds = c.get("userTeamIds");
     const teamFilter =
-      !user.isSuperAdmin && userTeamIds.length > 0
-        ? inArray(jobsLog.teamId, userTeamIds)
-        : undefined;
+      !user.isSuperAdmin && userTeamIds.length > 0 ? teamRunsFilter(userTeamIds) : undefined;
 
     const lastRunSubquery = db
       .select({
@@ -447,7 +462,7 @@ export function createDashboardApi({
     if (scheduledJobNames.length > 0) {
       const conditions = [inArray(jobsLog.jobName, scheduledJobNames)];
       if (!user.isSuperAdmin && userTeamIds.length > 0) {
-        conditions.push(inArray(jobsLog.teamId, userTeamIds));
+        conditions.push(teamRunsFilter(userTeamIds));
       }
       const statsRows = await db
         .select({

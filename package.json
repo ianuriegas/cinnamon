@@ -1,6 +1,6 @@
 {
   "name": "cinnamon",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Job orchestration framework powered by BullMQ, Postgres, and Hono.",
   "main": "src/index.ts",
   "scripts": {

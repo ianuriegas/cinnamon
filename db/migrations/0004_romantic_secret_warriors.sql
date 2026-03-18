@@ -1,0 +1,1 @@
+ALTER TABLE "cinnamon"."api_keys" ADD COLUMN "expires_at" timestamp;

@@ -45,37 +45,54 @@ export function createAuthRoutes() {
   router.get("/login", (c) => {
     const errorCode = c.req.query("error");
     const errorMessage = errorCode ? friendlyError(errorCode) : "";
-    const errorHtml = errorMessage ? `<div class="error">${escapeHtml(errorMessage)}</div>` : "";
+    const errorHtml = errorMessage
+      ? `<div class="error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${escapeHtml(errorMessage)}</span></div>`
+      : "";
 
     return c.html(`<!DOCTYPE html>
-<html lang="en" data-theme="gruvbox-light">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Sign in — Cinnamon</title>
   <script>
-    (function(){var t=localStorage.getItem("cinnamon-theme")||"gruvbox-light";document.documentElement.setAttribute("data-theme",t);})();
+    (function(){var t=localStorage.getItem("cinnamon-theme");if(t==="dark")document.documentElement.classList.add("dark");})();
   </script>
   <style>
-    [data-theme="gruvbox-light"]{--login-bg:#f2e5bc;--login-card:#fbf1c7;--login-text:#3c3836;--login-muted:#665c54;--login-accent:#d65d0e;--login-accent-hover:#af3a03;--login-error:#cc241d;--login-error-text:#fbf1c7;}
-    [data-theme="gruvbox-dark"]{--login-bg:#282828;--login-card:#3c3836;--login-text:#ebdbb2;--login-muted:#a89984;--login-accent:#fe8019;--login-accent-hover:#d65d0e;--login-error:#cc241d;--login-error-text:#fbf1c7;}
+    :root{--bg:#fbf1c7;--card:#ebdbb2;--card-border:#d5c4a1;--text:#3c3836;--muted:#665c54;--accent:#fe8019;--accent-hover:#d65d0e;--error-bg:#cc241d;--error-fg:#fbf1c7;--icon-bg:#fe8019;--icon-fg:#282828;--google-bg:#504945;--google-fg:#ebdbb2;--google-hover:#665c54;--divider:#d5c4a1;--subtle:#d5c4a1;}
+    .dark{--bg:#282828;--card:#3c3836;--card-border:#504945;--text:#ebdbb2;--muted:#a89984;--accent:#fe8019;--accent-hover:#d65d0e;--error-bg:#cc241d;--error-fg:#fbf1c7;--icon-bg:#fe8019;--icon-fg:#282828;--google-bg:#504945;--google-fg:#ebdbb2;--google-hover:#665c54;--divider:#504945;--subtle:#504945;}
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--login-bg);color:var(--login-text);}
-    .card{background:var(--login-card);border-radius:1rem;padding:2.5rem 2rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.15);}
-    h1{font-size:1.75rem;font-weight:700;margin-bottom:0.5rem;}
-    p{color:var(--login-muted);margin-bottom:1.5rem;}
-    .btn{display:inline-block;padding:0.75rem 1.5rem;background:var(--login-accent);color:var(--login-error-text);border:none;border-radius:0.5rem;font-size:1rem;font-weight:600;text-decoration:none;cursor:pointer;transition:background 0.15s;}
-    .btn:hover{background:var(--login-accent-hover);}
-    .error{background:var(--login-error);color:var(--login-error-text);padding:0.875rem 1.25rem;border-radius:0.5rem;margin-bottom:1.25rem;font-size:0.875rem;line-height:1.4;font-weight:500;}
+    body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text);padding:1rem;}
+    .card{background:var(--card);border:1px solid var(--card-border);border-radius:1rem;max-width:420px;width:100%;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12);}
+    .card-body{padding:2.5rem 2rem;display:flex;flex-direction:column;align-items:center;text-align:center;}
+    .logo{width:3rem;height:3rem;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;background:var(--icon-bg);color:var(--icon-fg);}
+    h1{font-size:1.5rem;font-weight:700;margin-bottom:0.375rem;}
+    .subtitle{color:var(--muted);font-size:0.875rem;margin-bottom:2rem;line-height:1.5;}
+    .error{display:flex;align-items:center;gap:0.625rem;background:var(--error-bg);color:var(--error-fg);padding:0.75rem 1rem;border-radius:0.75rem;margin-bottom:1.5rem;font-size:0.8125rem;line-height:1.4;font-weight:500;width:100%;text-align:left;}
+    .error svg{flex-shrink:0;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:0.625rem;width:100%;padding:0.75rem 1.5rem;background:var(--accent);color:var(--icon-fg);border:none;border-radius:0.75rem;font-size:0.875rem;font-weight:600;text-decoration:none;cursor:pointer;transition:all 0.15s ease;}
+    .btn:hover{background:var(--accent-hover);}
+    .btn svg{flex-shrink:0;}
+    .google-icon{width:1.75rem;height:1.75rem;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .footer{padding:1rem 2rem;border-top:1px solid var(--divider);text-align:center;}
+    .footer a{color:var(--muted);font-size:0.75rem;text-decoration:none;transition:color 0.15s;}
+    .footer a:hover{color:var(--text);}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Cinnamon</h1>
-    <p>Sign in to access the dashboard</p>
-    ${errorHtml}
-    <a href="/auth/google" class="btn">Sign in with Google</a>
+    <div class="card-body">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 8.5a4 4 0 0 0-8 0c0 2 1.5 3 3 4.5s3 3 3 5.5H10"/></svg>
+      </div>
+      <h1>Cinnamon</h1>
+      <p class="subtitle">Sign in to access the dashboard</p>
+      ${errorHtml}
+      <a href="/auth/google" class="btn">
+        Sign in with Google
+      </a>
+    </div>
   </div>
 </body>
 </html>`);

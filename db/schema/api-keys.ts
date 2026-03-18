@@ -12,4 +12,5 @@ export const apiKeys = cinnamonSchema.table("api_keys", {
   revoked: boolean("revoked").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"),
 });

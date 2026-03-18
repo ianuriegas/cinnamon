@@ -1,8 +1,23 @@
+import {
+  AlertTriangle,
+  Ban,
+  Check,
+  ChevronDown,
+  Clock,
+  Copy,
+  Eye,
+  EyeOff,
+  Key,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Shield,
+  X,
+} from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
-
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { TimeAgo } from "../components/TimeAgo";
 import { usePolling } from "../hooks/usePolling";
 import {
@@ -15,19 +30,48 @@ import {
 } from "../lib/api";
 import type { ApiKeyRow, TeamRow } from "../lib/types";
 
+type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
+type KeyStatus = "active" | "revoked" | "expired";
+
+const STATUS_CONFIG: Record<KeyStatus, { bg: string; fg: string; label: string }> = {
+  active: { bg: "var(--gruvbox-green)", fg: "var(--gruvbox-bg0)", label: "Active" },
+  revoked: { bg: "var(--gruvbox-red)", fg: "var(--gruvbox-bg0)", label: "Revoked" },
+  expired: { bg: "var(--gruvbox-bg4)", fg: "var(--gruvbox-bg0)", label: "Expired" },
+};
+
 export function ApiKeysPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editLabel, setEditLabel] = useState("");
+  const [editingKey, setEditingKey] = useState<ApiKeyRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     type: "revoke" | "rotate";
     id: number;
     label: string | null;
   } | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [revealedId, setRevealedId] = useState<number | null>(null);
+
+  const searchQuery = searchParams.get("q") ?? "";
+  const filterStatus = (searchParams.get("status") as KeyStatus) || null;
+  const filterTeam = searchParams.get("team") ?? null;
+
+  const updateParam = useCallback(
+    (key: string, value: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value) next.set(key, value);
+          else next.delete(key);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const load = useCallback(async () => {
     const res = await fetchApiKeys();
@@ -41,25 +85,13 @@ export function ApiKeysPage() {
 
   usePolling(load, 10000);
 
-  function startEdit(key: ApiKeyRow) {
-    setEditingId(key.id);
-    setEditLabel(key.label ?? "");
-  }
-
-  async function saveLabel(id: number) {
-    if (!editLabel.trim()) return;
-    await updateApiKeyLabel(id, editLabel.trim());
-    setEditingId(null);
-    await load();
-  }
-
   async function handleConfirmAction() {
     if (!confirmAction) return;
     if (confirmAction.type === "revoke") {
       await revokeApiKey(confirmAction.id);
       setConfirmAction(null);
       await load();
-    } else if (confirmAction.type === "rotate") {
+    } else {
       const res = await rotateApiKey(confirmAction.id);
       setConfirmAction(null);
       setRevealedKey(res.plainKey);
@@ -67,190 +99,176 @@ export function ApiKeysPage() {
     }
   }
 
+  function handleCopy(id: number, hint: string) {
+    navigator.clipboard?.writeText(`cin_...${hint}`);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  const activeFilterCount = [filterStatus, filterTeam].filter(Boolean).length;
+
+  const filteredKeys = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return keys.filter((k) => {
+      if (q) {
+        const matchLabel = k.label?.toLowerCase().includes(q);
+        const matchTeam = k.teamName.toLowerCase().includes(q);
+        const matchKey = k.keyHint.toLowerCase().includes(q);
+        if (!matchLabel && !matchTeam && !matchKey) return false;
+      }
+      if (filterStatus && k.status !== filterStatus) return false;
+      if (filterTeam && k.teamName !== filterTeam) return false;
+      return true;
+    });
+  }, [keys, searchQuery, filterStatus, filterTeam]);
+
+  const activeCount = keys.filter((k) => k.status === "active").length;
+  const teamNames = useMemo(() => [...new Set(keys.map((k) => k.teamName))].sort(), [keys]);
+  const isFiltering = searchQuery || activeFilterCount > 0;
+
   return (
-    <>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold">API Keys</h1>
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-foreground mb-1">API Keys</h1>
+          <p className="text-muted-foreground text-sm">
+            Manage API keys for programmatic access to Cinnamon.
+          </p>
+        </div>
         <button
           type="button"
-          className="btn btn-primary btn-sm"
           onClick={() => setShowCreateModal(true)}
+          className="px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all hover:opacity-90 shrink-0 self-start sm:self-auto"
+          style={{ backgroundColor: "var(--gruvbox-orange-bright)", color: "var(--gruvbox-bg0)" }}
         >
+          <Plus className="w-4 h-4" />
           Create Key
         </button>
       </div>
 
-      <div className="card bg-base-100 shadow-sm">
-        <div className="card-body p-0">
-          {isLoading ? (
-            <SkeletonTable />
-          ) : keys.length === 0 ? (
-            <div className="text-center py-12 text-base-content/60">
-              <p className="text-lg">No API keys</p>
-              <p className="text-sm mt-1">Create one to get started</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Label</th>
-                    <th>Team</th>
-                    <th>Key</th>
-                    <th>Status</th>
-                    <th>Last Used</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {keys.map((key) => (
-                    <tr key={key.id} className="hover:bg-base-300">
-                      <td>
-                        {editingId === key.id ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="text"
-                              className="input input-xs input-bordered w-36"
-                              value={editLabel}
-                              onChange={(e) => setEditLabel(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") saveLabel(key.id);
-                                if (e.key === "Escape") setEditingId(null);
-                              }}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => saveLabel(key.id)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => setEditingId(null)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="font-semibold">
-                            {key.label || <span className="text-base-content/40">unlabeled</span>}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span className="text-sm">{key.teamName}</span>
-                      </td>
-                      <td>
-                        <code className="text-xs bg-base-200 px-1.5 py-0.5 rounded">
-                          cin_...{key.keyHint}
-                        </code>
-                      </td>
-                      <td>
-                        {key.revoked ? (
-                          <span className="badge badge-error badge-sm">Revoked</span>
-                        ) : (
-                          <span className="badge badge-success badge-sm">Active</span>
-                        )}
-                      </td>
-                      <td>
-                        <TimeAgo date={key.lastUsedAt} />
-                      </td>
-                      <td>
-                        <TimeAgo date={key.createdAt} />
-                      </td>
-                      <td>
-                        {key.revoked ? (
-                          <span className="text-xs text-base-content/40">—</span>
-                        ) : (
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs"
-                              title="Rename"
-                              onClick={() => startEdit(key)}
-                            >
-                              <svg
-                                role="img"
-                                aria-label="Rename"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                                <path d="m15 5 4 4" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs"
-                              title="Rotate"
-                              onClick={() =>
-                                setConfirmAction({ type: "rotate", id: key.id, label: key.label })
-                              }
-                            >
-                              <svg
-                                role="img"
-                                aria-label="Rotate"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-                                <path d="M21 3v5h-5" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs text-error"
-                              title="Revoke"
-                              onClick={() =>
-                                setConfirmAction({ type: "revoke", id: key.id, label: key.label })
-                              }
-                            >
-                              <svg
-                                role="img"
-                                aria-label="Revoke"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="m4.9 4.9 14.2 14.2" />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        <StatCard
+          icon={<Key className="w-4 h-4" />}
+          label="Total Keys"
+          value={keys.length}
+          color="var(--gruvbox-blue-bright)"
+        />
+        <StatCard
+          icon={<Shield className="w-4 h-4" />}
+          label="Active"
+          value={activeCount}
+          color="var(--gruvbox-green-bright)"
+        />
+        <StatCard
+          icon={<AlertTriangle className="w-4 h-4" />}
+          label="Revoked / Expired"
+          value={keys.length - activeCount}
+          color="var(--gruvbox-red-bright)"
+          className="col-span-2 sm:col-span-1"
+        />
       </div>
 
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search by label, team, or key..."
+          value={searchQuery}
+          onChange={(e) => updateParam("q", e.target.value || null)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
+        />
+      </div>
+
+      {/* Filter pills */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <span className="text-xs text-muted-foreground mr-1">Status</span>
+        {(["active", "revoked", "expired"] as KeyStatus[]).map((s) => {
+          const sc = STATUS_CONFIG[s];
+          const isActive = filterStatus === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => updateParam("status", isActive ? null : s)}
+              className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                isActive
+                  ? "border-transparent"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+              }`}
+              style={isActive ? { backgroundColor: sc.bg, color: sc.fg } : undefined}
+            >
+              {sc.label}
+            </button>
+          );
+        })}
+
+        {teamNames.length > 0 && (
+          <TeamFilterDropdown
+            teams={teamNames}
+            selected={filterTeam}
+            onSelect={(t) => updateParam("team", filterTeam === t ? null : t)}
+          />
+        )}
+
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              updateParam("status", null);
+              updateParam("team", null);
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 ml-2"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* Result count */}
+      {isFiltering && (
+        <p className="text-xs text-muted-foreground mb-4">
+          Showing {filteredKeys.length} of {keys.length} keys
+        </p>
+      )}
+
+      {/* Key cards */}
+      {isLoading ? (
+        <SkeletonCards />
+      ) : filteredKeys.length === 0 ? (
+        <div className="text-center py-16">
+          <Key className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+          <h3 className="text-foreground mb-1">No API keys found</h3>
+          <p className="text-sm text-muted-foreground">
+            {isFiltering
+              ? "Try adjusting your search or filters."
+              : "Create your first API key to get started."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredKeys.map((apiKey) => (
+            <KeyCard
+              key={apiKey.id}
+              apiKey={apiKey}
+              copiedId={copiedId}
+              revealedId={revealedId}
+              confirmAction={confirmAction}
+              onCopy={handleCopy}
+              onToggleReveal={(id) => setRevealedId(revealedId === id ? null : id)}
+              onEdit={setEditingKey}
+              onConfirmRevoke={(id, label) => setConfirmAction({ type: "revoke", id, label })}
+              onConfirmRotate={(id, label) => setConfirmAction({ type: "rotate", id, label })}
+              onExecuteAction={handleConfirmAction}
+              onCancelAction={() => setConfirmAction(null)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Modals */}
       {showCreateModal && (
         <CreateKeyModal
           onClose={() => setShowCreateModal(false)}
@@ -261,68 +279,393 @@ export function ApiKeysPage() {
           }}
         />
       )}
-
+      {editingKey && (
+        <EditKeyModal
+          apiKey={editingKey}
+          onClose={() => setEditingKey(null)}
+          onSaved={() => {
+            setEditingKey(null);
+            load();
+          }}
+        />
+      )}
       {revealedKey && (
         <RevealKeyModal plainKey={revealedKey} onClose={() => setRevealedKey(null)} />
       )}
-
-      {confirmAction && (
-        <ConfirmModal
-          type={confirmAction.type}
-          label={confirmAction.label}
-          onConfirm={handleConfirmAction}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-    </>
+    </div>
   );
 }
 
-function SkeletonTable() {
+/* ─── Stat Card ─── */
+
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+  className = "",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  className?: string;
+}) {
   return (
-    <div className="overflow-x-auto">
-      <table className="table table-sm">
-        <thead>
-          <tr>
-            <th>Label</th>
-            <th>Team</th>
-            <th>Key</th>
-            <th>Status</th>
-            <th>Last Used</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: 4 }, (_, i) => (
-            <tr key={i}>
-              <td>
-                <div className="skeleton h-4 w-28" />
-              </td>
-              <td>
-                <div className="skeleton h-4 w-20" />
-              </td>
-              <td>
-                <div className="skeleton h-4 w-24" />
-              </td>
-              <td>
-                <div className="skeleton h-5 w-14 rounded-full" />
-              </td>
-              <td>
-                <div className="skeleton h-4 w-16" />
-              </td>
-              <td>
-                <div className="skeleton h-4 w-16" />
-              </td>
-              <td>
-                <div className="skeleton h-6 w-20" />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className={`bg-card border border-border rounded-xl p-4 ${className}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <span style={{ color }}>{icon}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <span className="text-2xl text-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
+        {value}
+      </span>
     </div>
   );
+}
+
+/* ─── Key Card ─── */
+
+function KeyCard({
+  apiKey,
+  copiedId,
+  revealedId,
+  confirmAction,
+  onCopy,
+  onToggleReveal,
+  onEdit,
+  onConfirmRevoke,
+  onConfirmRotate,
+  onExecuteAction,
+  onCancelAction,
+}: {
+  apiKey: ApiKeyRow;
+  copiedId: number | null;
+  revealedId: number | null;
+  confirmAction: { type: "revoke" | "rotate"; id: number; label: string | null } | null;
+  onCopy: (id: number, hint: string) => void;
+  onToggleReveal: (id: number) => void;
+  onEdit: (k: ApiKeyRow) => void;
+  onConfirmRevoke: (id: number, label: string | null) => void;
+  onConfirmRotate: (id: number, label: string | null) => void;
+  onExecuteAction: () => void;
+  onCancelAction: () => void;
+}) {
+  const isInactive = apiKey.status !== "active";
+  const sc = STATUS_CONFIG[apiKey.status];
+
+  return (
+    <div
+      className={`bg-card border border-border rounded-xl p-4 md:p-5 transition-colors group ${
+        isInactive ? "opacity-60" : "hover:border-muted-foreground/30"
+      }`}
+    >
+      <div className="flex flex-col gap-3">
+        {/* Top row */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: isInactive ? "var(--border)" : "var(--gruvbox-orange-bright)",
+                color: "var(--gruvbox-bg0)",
+              }}
+            >
+              <Key className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-foreground truncate">
+                  {apiKey.label || <span className="text-muted-foreground/40">unlabeled</span>}
+                </span>
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs shrink-0"
+                  style={{ backgroundColor: sc.bg, color: sc.fg }}
+                >
+                  {sc.label}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">{apiKey.teamName}</span>
+            </div>
+          </div>
+
+          {!isInactive && (
+            <div className="flex items-center gap-1 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={() => onEdit(apiKey)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="Edit"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onConfirmRotate(apiKey.id, apiKey.label)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="Rotate"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onConfirmRevoke(apiKey.id, apiKey.label)}
+                className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                style={{ color: "var(--gruvbox-red-bright)" }}
+                title="Revoke"
+              >
+                <Ban className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Key value row */}
+        <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2 border border-border">
+          <code className="text-sm text-muted-foreground flex-1 font-mono truncate">
+            {revealedId === apiKey.id
+              ? `cin_sk_${apiKey.keyHint}${"•".repeat(20)}`
+              : `cin_...${apiKey.keyHint}`}
+          </code>
+          <button
+            type="button"
+            onClick={() => onToggleReveal(apiKey.id)}
+            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            {revealedId === apiKey.id ? (
+              <EyeOff className="w-3.5 h-3.5" />
+            ) : (
+              <Eye className="w-3.5 h-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => onCopy(apiKey.id, apiKey.keyHint)}
+            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            {copiedId === apiKey.id ? (
+              <Check className="w-3.5 h-3.5" style={{ color: "var(--gruvbox-green-bright)" }} />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+
+        {/* Metadata row */}
+        <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-3 h-3" />
+            Created <TimeAgo date={apiKey.createdAt} />
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-3 h-3" />
+            {apiKey.lastUsedAt ? (
+              <>
+                Used <TimeAgo date={apiKey.lastUsedAt} />
+              </>
+            ) : (
+              "Never used"
+            )}
+          </span>
+          {apiKey.expiresAt && (
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle className="w-3 h-3" />
+              {new Date(apiKey.expiresAt) < new Date() ? (
+                "Expired"
+              ) : (
+                <>
+                  Expires <TimeAgo date={apiKey.expiresAt} />
+                </>
+              )}
+            </span>
+          )}
+        </div>
+
+        {/* Inline confirm */}
+        {confirmAction?.id === apiKey.id && (
+          <div className="bg-background border border-border rounded-xl p-3 mt-1">
+            <p className="text-sm text-foreground mb-3">
+              {confirmAction.type === "revoke" ? (
+                <>
+                  Revoke <strong>{apiKey.label ?? "unlabeled"}</strong>? Any requests using this key
+                  will be rejected.
+                </>
+              ) : (
+                <>
+                  Rotate <strong>{apiKey.label ?? "unlabeled"}</strong>? The current key will be
+                  revoked and a new one generated.
+                </>
+              )}
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={onCancelAction}
+                className="px-3 py-1.5 rounded-lg text-xs bg-accent text-foreground hover:bg-accent/70 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onExecuteAction}
+                className="px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={
+                  confirmAction.type === "revoke"
+                    ? { backgroundColor: "var(--gruvbox-red)", color: "var(--gruvbox-bg0)" }
+                    : { backgroundColor: "var(--gruvbox-yellow)", color: "var(--gruvbox-bg0)" }
+                }
+              >
+                {confirmAction.type === "revoke" ? "Revoke Key" : "Rotate Key"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Skeleton Cards ─── */
+
+function SkeletonCards() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="bg-card border border-border rounded-xl p-5 animate-pulse">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-lg bg-muted" />
+            <div className="flex-1">
+              <div className="bg-muted rounded h-4 w-32 mb-1.5" />
+              <div className="bg-muted rounded h-3 w-20" />
+            </div>
+          </div>
+          <div className="bg-muted rounded-lg h-9 w-full mb-3" />
+          <div className="bg-muted rounded h-3 w-48" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Team Filter Dropdown ─── */
+
+function TeamFilterDropdown({
+  teams,
+  selected,
+  onSelect,
+}: {
+  teams: string[];
+  selected: string | null;
+  onSelect: (t: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [teamSearch, setTeamSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setTeamSearch("");
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    setTimeout(() => inputRef.current?.focus(), 0);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const filtered = teams.filter((t) => t.toLowerCase().includes(teamSearch.toLowerCase()));
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-muted-foreground mr-1">Team</span>
+      <div className="relative" ref={ref}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className={`px-2.5 py-1 rounded-full text-xs border transition-all flex items-center gap-1.5 ${
+            selected
+              ? "border-transparent"
+              : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+          }`}
+          style={
+            selected
+              ? { backgroundColor: "var(--gruvbox-blue)", color: "var(--gruvbox-bg0)" }
+              : undefined
+          }
+        >
+          {selected || "Select..."}
+          <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+
+        {open && (
+          <div className="absolute top-full left-0 mt-1 w-52 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+            <div className="p-2 border-b border-border">
+              <div className="relative">
+                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Search teams..."
+                  value={teamSearch}
+                  onChange={(e) => setTeamSearch(e.target.value)}
+                  className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/50"
+                />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">No teams found</p>
+              ) : (
+                filtered.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      onSelect(t);
+                      setOpen(false);
+                      setTeamSearch("");
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-accent transition-colors ${
+                      selected === t ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {t}
+                    {selected === t && (
+                      <Check
+                        className="w-3.5 h-3.5"
+                        style={{ color: "var(--gruvbox-green-bright)" }}
+                      />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Create Key Modal ─── */
+
+const EXPIRATION_OPTIONS = [
+  { value: "never", label: "Never" },
+  { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days" },
+  { value: "1y", label: "1 year" },
+] as const;
+
+function expirationToDate(value: string): string | undefined {
+  if (value === "never") return undefined;
+  const now = new Date();
+  if (value === "30d") now.setDate(now.getDate() + 30);
+  else if (value === "90d") now.setDate(now.getDate() + 90);
+  else if (value === "1y") now.setFullYear(now.getFullYear() + 1);
+  return now.toISOString();
 }
 
 function CreateKeyModal({
@@ -335,9 +678,13 @@ function CreateKeyModal({
   const [label, setLabel] = useState("");
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | undefined>();
+  const [expiresIn, setExpiresIn] = useState("never");
   const [isLoadingTeams, setIsLoadingTeams] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
+  const teamRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchTeams().then((res) => {
@@ -347,13 +694,23 @@ function CreateKeyModal({
     });
   }, []);
 
+  useEffect(() => {
+    if (!teamDropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (teamRef.current && !teamRef.current.contains(e.target as Node))
+        setTeamDropdownOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [teamDropdownOpen]);
+
   async function handleSubmit(e: FormSubmitEvent) {
     e.preventDefault();
     if (!label.trim() || !selectedTeamId) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await createApiKey(label.trim(), selectedTeamId);
+      const res = await createApiKey(label.trim(), selectedTeamId, expirationToDate(expiresIn));
       onCreated(res.plainKey);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create key");
@@ -363,89 +720,281 @@ function CreateKeyModal({
   }
 
   const noTeams = !isLoadingTeams && teams.length === 0;
+  const selectedTeamName = teams.find((t) => t.id === selectedTeamId)?.name;
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="font-bold text-lg">Create API Key</h3>
+    <div
+      ref={backdropRef}
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => e.target === backdropRef.current && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4 flex items-center justify-between">
+          <h2 className="text-foreground">Create API Key</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="border-t border-border" />
+
         {noTeams ? (
-          <div className="mt-4">
-            <p className="text-sm text-base-content/60">
-              No teams exist yet. Create a team first before generating API keys.
-            </p>
-            <div className="modal-action">
-              <button type="button" className="btn" onClick={onClose}>
+          <>
+            <div className="px-6 py-5">
+              <p className="text-sm text-muted-foreground">
+                No teams exist yet. Create a team first before generating API keys.
+              </p>
+            </div>
+            <div className="border-t border-border" />
+            <div className="px-6 py-4 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl text-sm bg-accent text-foreground hover:bg-accent/70 transition-colors"
+                onClick={onClose}
+              >
                 Cancel
               </button>
-              <a href="/admin/teams" className="btn btn-primary">
+              <Link
+                to="/admin/teams"
+                className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90 inline-flex items-center"
+                style={{
+                  backgroundColor: "var(--gruvbox-orange-bright)",
+                  color: "var(--gruvbox-bg0)",
+                }}
+              >
                 Go to Teams
-              </a>
+              </Link>
             </div>
-          </div>
+          </>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-4">
-            <div className="form-control">
-              <label className="label" htmlFor="key-label">
-                <span className="label-text">Label</span>
-              </label>
-              <input
-                id="key-label"
-                type="text"
-                className="input input-bordered w-full"
-                placeholder="e.g. production, staging"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-              />
-            </div>
-            <div className="form-control mt-3">
-              <label className="label" htmlFor="key-team">
-                <span className="label-text">Team</span>
-              </label>
-              {isLoadingTeams ? (
-                <div className="skeleton h-12 w-full rounded-lg" />
-              ) : (
-                <select
-                  id="key-team"
-                  className="select select-bordered w-full"
-                  value={selectedTeamId}
-                  onChange={(e) => setSelectedTeamId(Number(e.target.value))}
-                >
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+          <form onSubmit={handleSubmit}>
+            <div className="px-6 py-5 space-y-5">
+              {/* Label */}
+              <div>
+                <span className="text-sm text-muted-foreground mb-2 block">Label</span>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
+                  placeholder="e.g. production, staging"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                />
+              </div>
+
+              {/* Team */}
+              <div>
+                <span className="text-sm text-muted-foreground mb-2 block">Team</span>
+                {isLoadingTeams ? (
+                  <div className="bg-muted animate-pulse rounded-xl h-[42px] w-full" />
+                ) : (
+                  <div className="relative" ref={teamRef}>
+                    <button
+                      type="button"
+                      onClick={() => setTeamDropdownOpen(!teamDropdownOpen)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm hover:border-muted-foreground/50 transition-colors"
+                    >
+                      {selectedTeamName ?? "Select team..."}
+                      <ChevronDown
+                        className={`w-4 h-4 text-muted-foreground transition-transform ${teamDropdownOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {teamDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg py-1 z-10 max-h-48 overflow-y-auto">
+                        {teams.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTeamId(t.id);
+                              setTeamDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-accent transition-colors ${
+                              selectedTeamId === t.id ? "text-foreground" : "text-muted-foreground"
+                            }`}
+                          >
+                            {t.name}
+                            {selectedTeamId === t.id && (
+                              <Check
+                                className="w-4 h-4"
+                                style={{ color: "var(--gruvbox-green-bright)" }}
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Expiration */}
+              <div>
+                <span className="text-sm text-muted-foreground mb-2 block">Expiration</span>
+                <div className="flex flex-wrap gap-2">
+                  {EXPIRATION_OPTIONS.map((opt) => {
+                    const active = expiresIn === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setExpiresIn(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
+                          active
+                            ? "border-transparent"
+                            : "border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
+                        }`}
+                        style={
+                          active
+                            ? {
+                                backgroundColor: "var(--gruvbox-orange)",
+                                color: "var(--gruvbox-bg0)",
+                              }
+                            : undefined
+                        }
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm" style={{ color: "var(--gruvbox-red-bright)" }}>
+                  {error}
+                </p>
               )}
             </div>
-            {error && <p className="text-error text-sm mt-2">{error}</p>}
-            <div className="modal-action">
-              <button type="button" className="btn" onClick={onClose} disabled={isSubmitting}>
+            <div className="border-t border-border" />
+            <div className="px-6 py-4 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl text-sm bg-accent text-foreground hover:bg-accent/70 transition-colors"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="btn btn-primary"
+                className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                style={{
+                  backgroundColor: "var(--gruvbox-orange-bright)",
+                  color: "var(--gruvbox-bg0)",
+                }}
                 disabled={!label.trim() || !selectedTeamId || isSubmitting}
               >
-                {isSubmitting ? <span className="loading loading-spinner loading-sm" /> : "Create"}
+                {isSubmitting ? (
+                  <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+                ) : (
+                  "Create"
+                )}
               </button>
             </div>
           </form>
         )}
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button type="button" onClick={onClose}>
-          close
-        </button>
-      </form>
-    </dialog>
+    </div>
   );
 }
+
+/* ─── Edit Key Modal ─── */
+
+function EditKeyModal({
+  apiKey,
+  onClose,
+  onSaved,
+}: {
+  apiKey: ApiKeyRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [label, setLabel] = useState(apiKey.label ?? "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  async function handleSave() {
+    if (!label.trim()) return;
+    setIsSubmitting(true);
+    await updateApiKeyLabel(apiKey.id, label.trim());
+    setIsSubmitting(false);
+    onSaved();
+  }
+
+  return (
+    <div
+      ref={backdropRef}
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => e.target === backdropRef.current && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4 flex items-center justify-between">
+          <h2 className="text-foreground">Edit API Key</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-5">
+          <span className="text-sm text-muted-foreground mb-2 block">Label</span>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+            }}
+            className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
+          />
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-4 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-xl text-sm bg-accent text-foreground hover:bg-accent/70 transition-colors"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!label.trim() || isSubmitting}
+            className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: "var(--gruvbox-orange-bright)", color: "var(--gruvbox-bg0)" }}
+          >
+            {isSubmitting ? (
+              <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+            ) : (
+              "Save"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Reveal Key Modal ─── */
 
 function RevealKeyModal({ plainKey, onClose }: { plainKey: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(plainKey);
@@ -454,107 +1003,70 @@ function RevealKeyModal({ plainKey, onClose }: { plainKey: string; onClose: () =
   }
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="font-bold text-lg">Your New API Key</h3>
-        <div className="alert alert-warning mt-4">
-          <svg
-            role="img"
-            aria-label="Warning"
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-            <path d="M12 9v4" />
-            <path d="M12 17h.01" />
-          </svg>
-          <span className="text-sm">Copy this key now. It will not be shown again.</span>
+    <div
+      ref={backdropRef}
+      role="dialog"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+      onClick={(e) => e.target === backdropRef.current && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: "var(--gruvbox-green)", color: "var(--gruvbox-bg0)" }}
+            >
+              <Check className="w-5 h-5" />
+            </div>
+            <h2 className="text-foreground">Key Created!</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Copy your API key now. You won't be able to see it again.
+          </p>
         </div>
-        <div className="flex items-center gap-2 mt-4">
-          <input
-            ref={inputRef}
-            type="text"
-            readOnly
-            value={plainKey}
-            className="input input-bordered input-sm font-mono w-full text-xs"
-            onClick={() => inputRef.current?.select()}
-          />
-          <button type="button" className="btn btn-sm btn-outline" onClick={handleCopy}>
-            {copied ? "Copied!" : "Copy"}
-          </button>
+        <div className="px-6 pb-3">
+          <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-3 border border-border">
+            <input
+              ref={inputRef}
+              type="text"
+              readOnly
+              value={plainKey}
+              onClick={() => inputRef.current?.select()}
+              className="flex-1 bg-transparent text-foreground font-mono text-sm border-none focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              {copied ? (
+                <Check className="w-4 h-4" style={{ color: "var(--gruvbox-green-bright)" }} />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
-        <div className="modal-action">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
-            I've saved this key
-          </button>
+        <div
+          className="px-6 py-4 flex items-center gap-3"
+          style={{ backgroundColor: "var(--gruvbox-yellow)", color: "var(--gruvbox-bg0)" }}
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <p className="text-xs">Store this key securely. It will not be shown again.</p>
         </div>
-      </div>
-    </dialog>
-  );
-}
-
-function ConfirmModal({
-  type,
-  label,
-  onConfirm,
-  onCancel,
-}: {
-  type: "revoke" | "rotate";
-  label: string | null;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const title = type === "revoke" ? "Revoke API Key" : "Rotate API Key";
-  const description =
-    type === "revoke"
-      ? `This will permanently revoke the key "${label ?? "unlabeled"}". Any requests using it will be rejected.`
-      : `This will revoke the current key "${label ?? "unlabeled"}" and generate a new one. Update your applications with the new key.`;
-
-  async function handleConfirm() {
-    setIsSubmitting(true);
-    await onConfirm();
-    setIsSubmitting(false);
-  }
-
-  return (
-    <dialog className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="font-bold text-lg">{title}</h3>
-        <p className="py-4 text-sm">{description}</p>
-        <div className="modal-action">
-          <button type="button" className="btn" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
-          </button>
+        <div className="px-6 py-4 flex justify-end">
           <button
             type="button"
-            className={`btn ${type === "revoke" ? "btn-error" : "btn-warning"}`}
-            onClick={handleConfirm}
-            disabled={isSubmitting}
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90"
+            style={{ backgroundColor: "var(--gruvbox-orange-bright)", color: "var(--gruvbox-bg0)" }}
           >
-            {isSubmitting ? (
-              <span className="loading loading-spinner loading-sm" />
-            ) : type === "revoke" ? (
-              "Revoke"
-            ) : (
-              "Rotate"
-            )}
+            Done
           </button>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button type="button" onClick={onCancel}>
-          close
-        </button>
-      </form>
-    </dialog>
+    </div>
   );
 }

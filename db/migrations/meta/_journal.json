@@ -29,6 +29,13 @@
       "when": 1773278787835,
       "tag": "0003_even_logan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773789480373,
+      "tag": "0004_romantic_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

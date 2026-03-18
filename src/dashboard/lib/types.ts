@@ -20,34 +20,27 @@ export interface PaginationInfo {
 }
 
 export interface RunsFilters {
+  q: string;
   name: string;
   status: string;
-  since: string;
+  since?: string;
 }
 
 export interface DefinitionRow {
   name: string;
   command: string;
   script?: string;
+  args?: string[];
+  commandDisplay?: string;
   schedule?: string;
   timeout?: string;
   retries?: number;
   description?: string;
+  teams?: string[];
   lastRun?: {
     status: string;
     createdAt: string;
   } | null;
-}
-
-export interface ScheduleRow {
-  name: string;
-  pattern: string;
-  next: string | null;
-  stats: {
-    total: number;
-    completed: number;
-    failed: number;
-  };
 }
 
 export interface TeamRow {
@@ -63,8 +56,10 @@ export interface ApiKeyRow {
   revoked: boolean;
   createdAt: string;
   lastUsedAt: string | null;
+  expiresAt: string | null;
   teamId: number;
   teamName: string;
+  status: "active" | "revoked" | "expired";
 }
 
 export interface ApiKeyCreateResponse extends ApiKeyRow {

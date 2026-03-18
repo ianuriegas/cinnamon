@@ -1,5 +1,6 @@
+import { Pencil, Plus, Trash2, Users, X } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
 
@@ -13,8 +14,7 @@ export function TeamsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
+  const [editingTeam, setEditingTeam] = useState<TeamRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{
     id: number;
     name: string;
@@ -32,18 +32,6 @@ export function TeamsPage() {
 
   usePolling(load, 10000);
 
-  function startEdit(team: TeamRow) {
-    setEditingId(team.id);
-    setEditName(team.name);
-  }
-
-  async function saveName(id: number) {
-    if (!editName.trim()) return;
-    await updateTeamName(id, editName.trim());
-    setEditingId(null);
-    await load();
-  }
-
   async function handleDelete() {
     if (!confirmDelete) return;
     await deleteTeam(confirmDelete.id);
@@ -52,140 +40,111 @@ export function TeamsPage() {
   }
 
   return (
-    <>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold">Teams</h1>
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-foreground mb-1">Teams</h1>
+          <p className="text-muted-foreground text-sm">Manage teams and organize access control.</p>
+        </div>
         <button
           type="button"
-          className="btn btn-primary btn-sm"
           onClick={() => setShowCreateModal(true)}
+          className="px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all hover:opacity-90 shrink-0 self-start sm:self-auto"
+          style={{
+            backgroundColor: "var(--gruvbox-orange-bright)",
+            color: "var(--gruvbox-bg0)",
+          }}
         >
+          <Plus className="w-4 h-4" />
           Create Team
         </button>
       </div>
 
-      <div className="card bg-base-100 shadow-sm">
-        <div className="card-body p-0">
-          {isLoading ? (
-            <SkeletonTable />
-          ) : teams.length === 0 ? (
-            <div className="text-center py-12 text-base-content/60">
-              <p className="text-lg">No teams</p>
-              <p className="text-sm mt-1">Create one to get started</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Created</th>
-                    <th>Actions</th>
+      {/* Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {isLoading ? (
+          <SkeletonTable />
+        ) : teams.length === 0 ? (
+          <div className="text-center py-16">
+            <Users className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+            <h3 className="text-foreground mb-1">No teams yet</h3>
+            <p className="text-sm text-muted-foreground">Create your first team to get started.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-6 py-4 text-sm text-muted-foreground text-left font-medium">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 text-sm text-muted-foreground text-left font-medium">
+                    Created
+                  </th>
+                  <th className="px-6 py-4 text-sm text-muted-foreground text-right font-medium">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map((team) => (
+                  <tr
+                    key={team.id}
+                    className="border-b border-border/50 hover:bg-accent/30 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="text-foreground">{team.name}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                      <TimeAgo date={team.createdAt} />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-1 justify-end">
+                        <button
+                          type="button"
+                          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title="Rename"
+                          onClick={() => setEditingTeam(team)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-2 rounded-lg hover:bg-accent transition-colors"
+                          style={{ color: "var(--gruvbox-red-bright)" }}
+                          title="Delete"
+                          onClick={() => setConfirmDelete({ id: team.id, name: team.name })}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {teams.map((team) => (
-                    <tr key={team.id} className="hover:bg-base-300">
-                      <td>
-                        {editingId === team.id ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="text"
-                              className="input input-xs input-bordered w-48"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") saveName(team.id);
-                                if (e.key === "Escape") setEditingId(null);
-                              }}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => saveName(team.id)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => setEditingId(null)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="font-semibold">{team.name}</span>
-                        )}
-                      </td>
-                      <td>
-                        <TimeAgo date={team.createdAt} />
-                      </td>
-                      <td>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-xs"
-                            title="Rename"
-                            onClick={() => startEdit(team)}
-                          >
-                            <svg
-                              role="img"
-                              aria-label="Rename"
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                              <path d="m15 5 4 4" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-xs text-error"
-                            title="Delete"
-                            onClick={() => setConfirmDelete({ id: team.id, name: team.name })}
-                          >
-                            <svg
-                              role="img"
-                              aria-label="Delete"
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M3 6h18" />
-                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
+      {/* Modals */}
       {showCreateModal && (
         <CreateTeamModal
           onClose={() => setShowCreateModal(false)}
           onCreated={() => {
             setShowCreateModal(false);
+            load();
+          }}
+        />
+      )}
+
+      {editingTeam && (
+        <EditTeamModal
+          team={editingTeam}
+          onClose={() => setEditingTeam(null)}
+          onSaved={() => {
+            setEditingTeam(null);
             load();
           }}
         />
@@ -198,32 +157,38 @@ export function TeamsPage() {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-    </>
+    </div>
   );
 }
+
+/* ─── Skeleton Table ─── */
 
 function SkeletonTable() {
   return (
     <div className="overflow-x-auto">
-      <table className="table table-sm">
+      <table className="w-full">
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Created</th>
-            <th>Actions</th>
+          <tr className="border-b border-border">
+            <th className="px-6 py-4 text-sm text-muted-foreground text-left font-medium">Name</th>
+            <th className="px-6 py-4 text-sm text-muted-foreground text-left font-medium">
+              Created
+            </th>
+            <th className="px-6 py-4 text-sm text-muted-foreground text-right font-medium">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: 3 }, (_, i) => (
-            <tr key={i}>
-              <td>
-                <div className="skeleton h-4 w-36" />
+            <tr key={i} className="border-b border-border/50">
+              <td className="px-6 py-4">
+                <div className="bg-muted animate-pulse rounded h-4 w-36" />
               </td>
-              <td>
-                <div className="skeleton h-4 w-16" />
+              <td className="px-6 py-4">
+                <div className="bg-muted animate-pulse rounded h-4 w-16" />
               </td>
-              <td>
-                <div className="skeleton h-6 w-16" />
+              <td className="px-6 py-4">
+                <div className="bg-muted animate-pulse rounded h-6 w-16 ml-auto" />
               </td>
             </tr>
           ))}
@@ -233,10 +198,13 @@ function SkeletonTable() {
   );
 }
 
+/* ─── Create Team Modal ─── */
+
 function CreateTeamModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   async function handleSubmit(e: FormSubmitEvent) {
     e.preventDefault();
@@ -254,46 +222,158 @@ function CreateTeamModal({ onClose, onCreated }: { onClose: () => void; onCreate
   }
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="font-bold text-lg">Create Team</h3>
-        <form onSubmit={handleSubmit} className="mt-4">
-          <div className="form-control">
-            <label className="label" htmlFor="team-name">
-              <span className="label-text">Name</span>
-            </label>
-            <input
-              id="team-name"
-              type="text"
-              className="input input-bordered w-full"
-              placeholder="e.g. Engineering, Operations"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+    <div
+      ref={backdropRef}
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => e.target === backdropRef.current && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4 flex items-center justify-between">
+          <h2 className="text-foreground">Create Team</h2>
+        </div>
+        <div className="border-t border-border" />
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-5 space-y-5">
+            <div>
+              <span className="text-sm text-muted-foreground mb-2 block">Name</span>
+              <input
+                type="text"
+                className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
+                placeholder="e.g. Engineering, Operations"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            {error && (
+              <p className="text-sm" style={{ color: "var(--gruvbox-red-bright)" }}>
+                {error}
+              </p>
+            )}
           </div>
-          {error && <p className="text-error text-sm mt-2">{error}</p>}
-          <div className="modal-action">
-            <button type="button" className="btn" onClick={onClose} disabled={isSubmitting}>
+          <div className="border-t border-border" />
+          <div className="px-6 py-4 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-xl text-sm bg-accent text-foreground hover:bg-accent/70 transition-colors"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn btn-primary"
+              className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-50"
+              style={{
+                backgroundColor: "var(--gruvbox-orange-bright)",
+                color: "var(--gruvbox-bg0)",
+              }}
               disabled={!name.trim() || isSubmitting}
             >
-              {isSubmitting ? <span className="loading loading-spinner loading-sm" /> : "Create"}
+              {isSubmitting ? (
+                <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+              ) : (
+                "Create"
+              )}
             </button>
           </div>
         </form>
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button type="button" onClick={onClose}>
-          close
-        </button>
-      </form>
-    </dialog>
+    </div>
   );
 }
+
+/* ─── Edit Team Modal ─── */
+
+function EditTeamModal({
+  team,
+  onClose,
+  onSaved,
+}: {
+  team: TeamRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(team.name);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setIsSubmitting(true);
+    await updateTeamName(team.id, name.trim());
+    setIsSubmitting(false);
+    onSaved();
+  }
+
+  return (
+    <div
+      ref={backdropRef}
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => e.target === backdropRef.current && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4 flex items-center justify-between">
+          <h2 className="text-foreground">Edit Team</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-5">
+          <span className="text-sm text-muted-foreground mb-2 block">Name</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+            }}
+            className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
+          />
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-4 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-xl text-sm bg-accent text-foreground hover:bg-accent/70 transition-colors"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!name.trim() || isSubmitting}
+            className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--gruvbox-orange-bright)",
+              color: "var(--gruvbox-bg0)",
+            }}
+          >
+            {isSubmitting ? (
+              <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+            ) : (
+              "Save"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Delete Team Modal ─── */
 
 function DeleteTeamModal({
   name,
@@ -305,6 +385,7 @@ function DeleteTeamModal({
   onCancel: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   async function handleConfirm() {
     setIsSubmitting(true);
@@ -313,32 +394,49 @@ function DeleteTeamModal({
   }
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="font-bold text-lg">Delete Team</h3>
-        <p className="py-4 text-sm">
-          This will permanently delete the team "{name}" and revoke all its API keys. Job run
-          history will be kept but no longer linked to a team.
-        </p>
-        <div className="modal-action">
-          <button type="button" className="btn" onClick={onCancel} disabled={isSubmitting}>
+    <div
+      ref={backdropRef}
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => e.target === backdropRef.current && onCancel()}
+      onKeyDown={(e) => e.key === "Escape" && onCancel()}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4">
+          <h2 className="text-foreground">Delete Team</h2>
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-5">
+          <p className="text-sm text-foreground">
+            Are you sure you want to delete <strong>{name}</strong>? This action cannot be undone.
+          </p>
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-4 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-xl text-sm bg-accent text-foreground hover:bg-accent/70 transition-colors"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </button>
           <button
             type="button"
-            className="btn btn-error"
+            className="px-4 py-2 rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: "var(--gruvbox-red)", color: "var(--gruvbox-bg0)" }}
             onClick={handleConfirm}
             disabled={isSubmitting}
           >
-            {isSubmitting ? <span className="loading loading-spinner loading-sm" /> : "Delete"}
+            {isSubmitting ? (
+              <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+            ) : (
+              "Delete Team"
+            )}
           </button>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button type="button" onClick={onCancel}>
-          close
-        </button>
-      </form>
-    </dialog>
+    </div>
   );
 }

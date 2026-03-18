@@ -1,3 +1,4 @@
+import { ChevronDown, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTimezoneContext } from "../contexts/TimezoneContext";
@@ -57,58 +58,100 @@ function getInitials(name: string): string {
 
 function TimezoneSelect() {
   const { timezone, setTimezone } = useTimezoneContext();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
   return (
     <div>
-      <label className="label" htmlFor="tz-select">
-        <span className="label-text">Timezone</span>
+      <label htmlFor="tz-select-btn" className="text-sm text-muted-foreground mb-3 block">
+        Timezone
       </label>
-      <select
-        id="tz-select"
-        className="select select-bordered w-full"
-        value={timezone}
-        onChange={(e) => setTimezone(e.target.value)}
-      >
-        {COMMON_TIMEZONES.map((tz) => (
-          <option key={tz} value={tz}>
-            {formatTzLabel(tz)}
-          </option>
-        ))}
-      </select>
+      <div className="relative" ref={ref}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-background border border-border text-foreground hover:border-muted-foreground/50 transition-colors text-sm"
+        >
+          {formatTzLabel(timezone)}
+          <ChevronDown
+            className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+        {open && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-50 py-1 max-h-64 overflow-y-auto">
+            {COMMON_TIMEZONES.map((tz) => (
+              <button
+                key={tz}
+                type="button"
+                onClick={() => {
+                  setTimezone(tz);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-accent transition-colors ${
+                  timezone === tz ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {formatTzLabel(tz)}
+                {timezone === tz && <span style={{ color: "var(--gruvbox-green-bright)" }}>✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+
   const modal = (
     <div
-      data-settings-modal
-      className={`modal ${open ? "modal-open" : ""}`}
-      aria-hidden={!open}
-      style={!open ? { pointerEvents: "none" } : undefined}
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
-      <section
-        className="modal-box"
-        aria-label="Settings"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        <h3 className="font-bold text-lg">Settings</h3>
-        <div className="py-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 pt-6 pb-4 flex items-center justify-between">
+          <h2 className="text-foreground">Settings</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="border-t border-border" />
+        <div className="px-6 py-5 space-y-4">
           <TimezoneSelect />
         </div>
-        <div className="modal-action">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
+        <div className="border-t border-border" />
+        <div className="px-6 py-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2 rounded-xl text-sm transition-all hover:opacity-90"
+            style={{
+              backgroundColor: "var(--gruvbox-orange-bright)",
+              color: "var(--gruvbox-bg0)",
+            }}
+          >
             Done
           </button>
         </div>
-      </section>
-      <button
-        type="button"
-        className="modal-backdrop"
-        aria-label="Close modal"
-        onClick={onClose}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
-      />
+      </div>
     </div>
   );
 
@@ -119,111 +162,209 @@ interface ProfileDropdownProps {
   user: AuthUser | null;
   isLoading: boolean;
   authEnabled: boolean;
+  mobile?: boolean;
 }
 
-export function ProfileDropdown({ user, isLoading, authEnabled }: ProfileDropdownProps) {
+export function ProfileDropdown({ user, isLoading, authEnabled, mobile }: ProfileDropdownProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-
-  function openSettings() {
-    setSettingsOpen(true);
-  }
+  const [menuOpen, setMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      if (!detailsRef.current) return;
-      if (detailsRef.current.contains(target)) return;
-      const inModal = document.querySelector("[data-settings-modal]")?.contains(target);
-      if (inModal) return;
-      detailsRef.current.removeAttribute("open");
-    }
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
 
   if (isLoading) {
-    return <div className="w-8 h-8 rounded-full skeleton" />;
+    return <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />;
   }
+
+  if (mobile) {
+    return (
+      <>
+        <MobileProfileSection
+          user={user}
+          authEnabled={authEnabled}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
+        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      </>
+    );
+  }
+
+  const initials = user?.name
+    ? getInitials(user.name)
+    : user?.email
+      ? user.email[0].toUpperCase()
+      : "?";
 
   return (
     <>
-      <details ref={detailsRef} className="dropdown dropdown-end">
-        <summary className="btn btn-ghost btn-circle avatar" aria-label="Profile menu">
+      <div className="relative" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium hover:scale-105 transition-transform"
+          style={{
+            backgroundColor: "var(--gruvbox-green)",
+            color: "var(--gruvbox-bg0)",
+          }}
+          aria-label="Profile menu"
+        >
           {authEnabled && user?.picture ? (
-            <div className="w-8 rounded-full">
-              <img src={user.picture} alt={user.name} referrerPolicy="no-referrer" />
-            </div>
-          ) : authEnabled && user ? (
-            <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
-              <span className="text-xs">{getInitials(user.name || user.email)}</span>
-            </div>
+            <img
+              src={user.picture}
+              alt={user.name}
+              className="w-10 h-10 rounded-full"
+              referrerPolicy="no-referrer"
+            />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <title>User avatar</title>
-                <circle cx="12" cy="8" r="4" />
-                <path d="M20 21a8 8 0 0 0-16 0" />
-              </svg>
-            </div>
+            initials
           )}
-        </summary>
-
-        <ul className="dropdown-content menu bg-base-100 rounded-box z-10 w-64 p-2 shadow-lg mt-2">
-          {authEnabled && user ? (
-            <>
-              <li className="menu-title px-3 pt-2 pb-1">
+        </button>
+        {menuOpen && (
+          <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+            {authEnabled && user ? (
+              <div className="px-4 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  {user.picture && (
+                  {user.picture ? (
                     <img
                       src={user.picture}
                       alt=""
-                      className="w-10 h-10 rounded-full"
+                      className="w-12 h-12 rounded-full shrink-0"
                       referrerPolicy="no-referrer"
                     />
+                  ) : (
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: "var(--gruvbox-green)",
+                        color: "var(--gruvbox-bg0)",
+                      }}
+                    >
+                      {initials}
+                    </div>
                   )}
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm truncate">{user.name}</div>
-                    <div className="text-xs text-base-content/60 truncate">{user.email}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-foreground truncate">{user.name}</div>
+                    <div className="text-sm text-muted-foreground truncate">{user.email}</div>
                   </div>
                 </div>
-              </li>
-              <li className="h-px bg-base-300 my-1" />
-            </>
-          ) : !authEnabled ? (
-            <li className="menu-title px-3 pt-2 pb-1 text-base-content/60 text-sm">Dev mode</li>
-          ) : null}
-
-          <li>
-            <button type="button" onClick={openSettings}>
-              Settings
-            </button>
-          </li>
-
-          {authEnabled && user && (
-            <>
-              <li className="h-px bg-base-300 my-1" />
-              <li>
-                <a href="/auth/logout" className="text-error">
+              </div>
+            ) : !authEnabled ? (
+              <div className="px-4 py-3 border-b border-border text-sm text-muted-foreground">
+                Dev mode
+              </div>
+            ) : null}
+            <div className="py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  setMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-accent transition-colors"
+              >
+                Settings
+              </button>
+              {authEnabled && user && (
+                <a
+                  href="/auth/logout"
+                  className="block px-4 py-2.5 text-sm transition-colors"
+                  style={{ color: "var(--gruvbox-red-bright)" }}
+                >
                   Logout
                 </a>
-              </li>
-            </>
-          )}
-        </ul>
-      </details>
-
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
+  );
+}
+
+function MobileProfileSection({
+  user,
+  authEnabled,
+  onOpenSettings,
+}: {
+  user: AuthUser | null;
+  authEnabled: boolean;
+  onOpenSettings: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const initials = user?.name
+    ? getInitials(user.name)
+    : user?.email
+      ? user.email[0].toUpperCase()
+      : "?";
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="px-4 py-3 flex items-center gap-3 w-full hover:bg-accent/50 transition-colors rounded-lg"
+      >
+        {authEnabled && user?.picture ? (
+          <img
+            src={user.picture}
+            alt=""
+            className="w-10 h-10 rounded-full shrink-0"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center font-medium shrink-0"
+            style={{
+              backgroundColor: "var(--gruvbox-green)",
+              color: "var(--gruvbox-bg0)",
+            }}
+          >
+            {initials}
+          </div>
+        )}
+        <div className="min-w-0 flex-1 text-left">
+          <div className="text-sm text-foreground truncate">
+            {authEnabled && user ? user.name || user.email : "Dev mode"}
+          </div>
+          {authEnabled && user?.email && user.name && (
+            <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+          )}
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+      {expanded && (
+        <div className="ml-4 mt-1 flex flex-col gap-1 border-l-2 border-border pl-3">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="text-left px-3 py-1.5 rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
+          >
+            Settings
+          </button>
+          {authEnabled && user && (
+            <a
+              href="/auth/logout"
+              className="px-3 py-1.5 rounded-lg text-sm transition-colors"
+              style={{ color: "var(--gruvbox-red-bright)" }}
+            >
+              Logout
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

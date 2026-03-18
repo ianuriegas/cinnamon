@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db/index.ts";
 import { apiKeys } from "@/db/schema/api-keys.ts";
@@ -10,7 +10,13 @@ export async function verifyApiKey(plainKey: string): Promise<{ teamId: number }
   const rows = await db
     .select({ teamId: apiKeys.teamId, id: apiKeys.id })
     .from(apiKeys)
-    .where(and(eq(apiKeys.keyHash, keyHash), eq(apiKeys.revoked, false)))
+    .where(
+      and(
+        eq(apiKeys.keyHash, keyHash),
+        eq(apiKeys.revoked, false),
+        or(isNull(apiKeys.expiresAt), gte(apiKeys.expiresAt, new Date())),
+      ),
+    )
     .limit(1);
 
   if (rows.length === 0) return null;

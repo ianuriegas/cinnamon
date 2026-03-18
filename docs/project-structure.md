@@ -67,15 +67,15 @@ src/
     auth.ts           Bearer token auth middleware for Hono
   routes/
     jobs.ts           Jobs observability API routes
-  dashboard/          React SPA (Vite + Tailwind + DaisyUI)
+  dashboard/          React SPA (Vite + Tailwind CSS + Gruvbox theme)
     index.html        Vite HTML entry point
     main.tsx          React entry (mounts <App /> into #root)
     App.tsx           React Router routes (includes NoTeamsPage for users with no team assignment)
-    styles.css        Tailwind v4 + DaisyUI v5 + Gruvbox themes
+    styles.css        Tailwind v4 + Gruvbox CSS custom properties (light/dark)
     api.ts            Server-side Hono JSON API (mounted at /api/dashboard, includes cancel + SSE stream)
     layouts/
       BaseLayout.tsx  Shell layout (navbar, theme toggle, <Outlet />)
-    pages/            Full-page views (RunsPage, RunDetailPage, NoTeamsPage, etc.)
+    pages/            Full-page views (RunsPage, RunDetailPage, JobsPage, ApiKeysPage, UsersPage, TeamsPage, etc.)
     components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo, ProfileDropdown)
     contexts/         React contexts (TimezoneContext)
     hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE), useAuth, useTimezone

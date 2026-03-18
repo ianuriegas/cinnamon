@@ -13,7 +13,11 @@ export function CopyButton({ getText }: { getText: () => string }) {
   }, [getText]);
 
   return (
-    <button type="button" className="btn btn-ghost btn-xs" onClick={copy}>
+    <button
+      type="button"
+      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      onClick={copy}
+    >
       {copied ? "Copied!" : "Copy"}
     </button>
   );

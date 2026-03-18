@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
@@ -86,11 +86,17 @@ export function createDashboardApi({
   function parseRunsQuery(c: { req: { query(k: string): string | undefined } }) {
     const limitParam = Math.min(Number(c.req.query("limit")) || DEFAULT_LIMIT, MAX_LIMIT);
     const offsetParam = Math.max(Number(c.req.query("offset")) || 0, 0);
+    const searchQuery = c.req.query("q") ?? "";
     const nameFilter = c.req.query("name") ?? "";
     const statusFilter = c.req.query("status") ?? "";
     const sinceFilter = c.req.query("since") ?? "";
 
     const conditions = [];
+    if (searchQuery) {
+      const pattern = `%${searchQuery}%`;
+      const match = or(ilike(jobsLog.jobName, pattern), ilike(jobsLog.jobId, pattern));
+      if (match) conditions.push(match);
+    }
     if (nameFilter) conditions.push(eq(jobsLog.jobName, nameFilter));
     if (statusFilter) conditions.push(eq(jobsLog.status, statusFilter));
     if (sinceFilter) {
@@ -99,7 +105,15 @@ export function createDashboardApi({
         conditions.push(gte(jobsLog.createdAt, sinceDate));
       }
     }
-    return { limitParam, offsetParam, nameFilter, statusFilter, sinceFilter, conditions };
+    return {
+      limitParam,
+      offsetParam,
+      searchQuery,
+      nameFilter,
+      statusFilter,
+      sinceFilter,
+      conditions,
+    };
   }
 
   function buildRunsWhere(
@@ -417,6 +431,9 @@ export function createDashboardApi({
 
     const lastRunMap = new Map(lastRuns.map((r) => [r.jobName, r]));
 
+    const allTeams = await db.select({ id: teams.id, name: teams.name }).from(teams);
+    const teamNameById = new Map(allTeams.map((t) => [t.id, t.name]));
+
     let jobEntries = Object.entries(config.jobs);
     if (!user.isSuperAdmin) {
       jobEntries = jobEntries.filter(([name]) =>
@@ -424,18 +441,30 @@ export function createDashboardApi({
       );
     }
 
-    const definitions = jobEntries.map(([name, def]) => ({
-      name,
-      command: def.command,
-      script: def.script,
-      schedule: def.schedule,
-      timeout: def.timeout,
-      retries: def.retries,
-      description: def.description,
-      lastRun: lastRunMap.get(name) ?? null,
-    }));
+    const definitions = jobEntries.map(([name, def]) => {
+      const teamIds = jobTeamIds.get(name) ?? [];
+      const teamNames = teamIds
+        .map((id) => teamNameById.get(id))
+        .filter((n): n is string => n != null)
+        .sort();
+      const cmdParts = [def.command, def.script, ...(def.args ?? [])].filter(Boolean);
+      return {
+        name,
+        command: def.command,
+        script: def.script,
+        args: def.args,
+        commandDisplay: cmdParts.join(" "),
+        schedule: def.schedule,
+        timeout: def.timeout,
+        retries: def.retries,
+        description: def.description,
+        teams: teamNames.length > 0 ? teamNames : undefined,
+        lastRun: lastRunMap.get(name) ?? null,
+      };
+    });
 
-    return c.json({ data: definitions });
+    const allTeamNames = allTeams.map((t) => t.name).sort();
+    return c.json({ data: definitions, teams: allTeamNames });
   });
 
   router.get("/schedules", async (c) => {
@@ -619,6 +648,7 @@ export function createDashboardApi({
         revoked: apiKeys.revoked,
         createdAt: apiKeys.createdAt,
         lastUsedAt: apiKeys.lastUsedAt,
+        expiresAt: apiKeys.expiresAt,
         teamId: apiKeys.teamId,
         teamName: teams.name,
       })
@@ -626,23 +656,31 @@ export function createDashboardApi({
       .innerJoin(teams, eq(apiKeys.teamId, teams.id))
       .orderBy(desc(apiKeys.createdAt));
 
-    const data = rows.map((row) => ({
-      id: row.id,
-      label: row.label,
-      keyHint: row.keyHash.slice(-8),
-      revoked: row.revoked,
-      createdAt: row.createdAt,
-      lastUsedAt: row.lastUsedAt,
-      teamId: row.teamId,
-      teamName: row.teamName,
-    }));
+    const now = new Date();
+    const data = rows.map((row) => {
+      const expired = row.expiresAt != null && new Date(row.expiresAt) < now;
+      const status = row.revoked ? "revoked" : expired ? "expired" : "active";
+      return {
+        id: row.id,
+        label: row.label,
+        keyHint: row.keyHash.slice(-8),
+        revoked: row.revoked,
+        createdAt: row.createdAt,
+        lastUsedAt: row.lastUsedAt,
+        expiresAt: row.expiresAt,
+        teamId: row.teamId,
+        teamName: row.teamName,
+        status,
+      };
+    });
 
     return c.json({ data });
   });
 
   router.post("/api-keys", async (c) => {
-    const body = await c.req.json<{ label?: string; teamId?: number }>();
+    const body = await c.req.json<{ label?: string; teamId?: number; expiresAt?: string }>();
     const label = body.label?.trim() || null;
+    const expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
 
     let teamId = body.teamId;
     if (!teamId) {
@@ -657,8 +695,8 @@ export function createDashboardApi({
     const { plainKey, keyHash } = generateApiKey();
     const [inserted] = await db
       .insert(apiKeys)
-      .values({ teamId, keyHash, label })
-      .returning({ id: apiKeys.id, createdAt: apiKeys.createdAt });
+      .values({ teamId, keyHash, label, ...(expiresAt && { expiresAt }) })
+      .returning({ id: apiKeys.id, createdAt: apiKeys.createdAt, expiresAt: apiKeys.expiresAt });
 
     return c.json({
       id: inserted.id,
@@ -666,6 +704,8 @@ export function createDashboardApi({
       plainKey,
       keyHint: keyHash.slice(-8),
       createdAt: inserted.createdAt,
+      expiresAt: inserted.expiresAt,
+      status: "active",
     });
   });
 
@@ -696,7 +736,12 @@ export function createDashboardApi({
     }
 
     const [existing] = await db
-      .select({ teamId: apiKeys.teamId, label: apiKeys.label, revoked: apiKeys.revoked })
+      .select({
+        teamId: apiKeys.teamId,
+        label: apiKeys.label,
+        revoked: apiKeys.revoked,
+        expiresAt: apiKeys.expiresAt,
+      })
       .from(apiKeys)
       .where(eq(apiKeys.id, id))
       .limit(1);
@@ -710,8 +755,13 @@ export function createDashboardApi({
 
     const [inserted] = await db
       .insert(apiKeys)
-      .values({ teamId: existing.teamId, keyHash, label: existing.label })
-      .returning({ id: apiKeys.id, createdAt: apiKeys.createdAt });
+      .values({
+        teamId: existing.teamId,
+        keyHash,
+        label: existing.label,
+        ...(existing.expiresAt && { expiresAt: existing.expiresAt }),
+      })
+      .returning({ id: apiKeys.id, createdAt: apiKeys.createdAt, expiresAt: apiKeys.expiresAt });
 
     return c.json({
       id: inserted.id,
@@ -719,7 +769,9 @@ export function createDashboardApi({
       plainKey,
       keyHint: keyHash.slice(-8),
       createdAt: inserted.createdAt,
+      expiresAt: inserted.expiresAt,
       rotatedFromId: id,
+      status: "active",
     });
   });
 

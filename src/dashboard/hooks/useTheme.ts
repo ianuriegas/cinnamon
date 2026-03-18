@@ -1,31 +1,40 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-const LIGHT = "gruvbox-light";
-const DARK = "gruvbox-dark";
 const STORAGE_KEY = "cinnamon-theme";
 
-function getTheme(): string {
-  return document.documentElement.getAttribute("data-theme") || LIGHT;
+function isDarkMode(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
+
+function getSnapshot(): boolean {
+  return isDarkMode();
+}
+
+function getServerSnapshot(): boolean {
+  return false;
 }
 
 function subscribe(cb: () => void) {
   const observer = new MutationObserver(cb);
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme"],
+    attributeFilter: ["class"],
   });
   return () => observer.disconnect();
 }
 
 export function useTheme() {
-  const theme = useSyncExternalStore(subscribe, getTheme, () => LIGHT);
-  const isDark = theme === DARK;
+  const isDark = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const toggle = useCallback(() => {
-    const next = getTheme() === DARK ? LIGHT : DARK;
-    document.documentElement.setAttribute("data-theme", next);
+    const next = isDarkMode() ? "light" : "dark";
+    if (next === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     localStorage.setItem(STORAGE_KEY, next);
   }, []);
 
-  return { theme, isDark, toggle };
+  return { isDark, toggle };
 }

@@ -1,13 +1,20 @@
-const STATUS_STYLES: Record<string, string> = {
-  queued: "badge-info",
-  completed: "badge-success",
-  failed: "badge-error",
-  processing: "badge-warning",
-  cancelled: "badge-neutral",
-  interrupted: "badge-warning",
+const STATUS_COLORS: Record<string, string> = {
+  completed: "var(--gruvbox-green)",
+  processing: "var(--gruvbox-blue-bright)",
+  queued: "var(--gruvbox-yellow)",
+  failed: "var(--gruvbox-red-bright)",
+  cancelled: "var(--gruvbox-bg4)",
+  interrupted: "var(--gruvbox-orange)",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? "badge-ghost";
-  return <span className={`badge ${style} badge-sm gap-1`}>{status}</span>;
+  const bg = STATUS_COLORS[status] ?? "var(--gruvbox-bg4)";
+  return (
+    <span
+      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+      style={{ backgroundColor: bg, color: "var(--gruvbox-bg0)" }}
+    >
+      {status}
+    </span>
+  );
 }

@@ -2,12 +2,11 @@ import { Navigate, Route, Routes } from "react-router";
 import { useAuth } from "./hooks/useAuth";
 import { BaseLayout } from "./layouts/BaseLayout";
 import { ApiKeysPage } from "./pages/ApiKeysPage";
-import { DefinitionsPage } from "./pages/DefinitionsPage";
+import { JobsPage } from "./pages/JobsPage";
 import { NoTeamsPage } from "./pages/NoTeamsPage";
 import { RequestAccessPage } from "./pages/RequestAccessPage";
 import { RunDetailPage } from "./pages/RunDetailPage";
 import { RunsPage } from "./pages/RunsPage";
-import { SchedulesPage } from "./pages/SchedulesPage";
 import { TeamsPage } from "./pages/TeamsPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -17,7 +16,7 @@ export function App() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="loading loading-spinner loading-lg" />
+        <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
       </div>
     );
   }
@@ -36,8 +35,9 @@ export function App() {
       <Route path="/" element={<BaseLayout />}>
         <Route index element={<RunsPage />} />
         <Route path="runs/:id" element={<RunDetailPage />} />
-        <Route path="definitions" element={<DefinitionsPage />} />
-        <Route path="schedules" element={<SchedulesPage />} />
+        <Route path="jobs" element={<JobsPage />} />
+        <Route path="definitions" element={<Navigate to="/jobs" replace />} />
+        <Route path="schedules" element={<Navigate to="/jobs" replace />} />
         <Route
           path="admin/users"
           element={authEnabled ? <UsersPage /> : <Navigate to="/" replace />}

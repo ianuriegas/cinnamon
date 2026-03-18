@@ -7,7 +7,6 @@ import type {
   PaginationInfo,
   RunRow,
   RunsFilters,
-  ScheduleRow,
   TeamRow,
   UserRow,
 } from "./types";
@@ -82,6 +81,7 @@ export async function fetchRuns(
   pagination: { limit: number; offset: number },
 ): Promise<{ data: RunRow[]; pagination: PaginationInfo; jobNames: string[] }> {
   const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
   if (filters.name) params.set("name", filters.name);
   if (filters.status) params.set("status", filters.status);
   if (filters.since) params.set("since", filters.since);
@@ -101,12 +101,11 @@ export async function fetchRunRaw(id: string): Promise<string> {
   return res.text();
 }
 
-export async function fetchDefinitions(): Promise<{ data: DefinitionRow[] }> {
+export async function fetchDefinitions(): Promise<{
+  data: DefinitionRow[];
+  teams: string[];
+}> {
   return get("/definitions");
-}
-
-export async function fetchSchedules(): Promise<{ data: ScheduleRow[] }> {
-  return get("/schedules");
 }
 
 export async function triggerJob(name: string): Promise<{ jobId?: string; error?: string }> {
@@ -167,8 +166,16 @@ export async function fetchApiKeys(): Promise<{ data: ApiKeyRow[] }> {
   return get("/api-keys");
 }
 
-export async function createApiKey(label: string, teamId?: number): Promise<ApiKeyCreateResponse> {
-  return postJson("/api-keys", { label, ...(teamId != null && { teamId }) });
+export async function createApiKey(
+  label: string,
+  teamId?: number,
+  expiresAt?: string,
+): Promise<ApiKeyCreateResponse> {
+  return postJson("/api-keys", {
+    label,
+    ...(teamId != null && { teamId }),
+    ...(expiresAt != null && { expiresAt }),
+  });
 }
 
 export async function updateApiKeyLabel(

@@ -1,5 +1,5 @@
 import type { Queue } from "bullmq";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, or } from "drizzle-orm";
 import { Hono } from "hono";
 
 import type { CinnamonConfig } from "@/config/define-config.ts";
@@ -97,19 +97,19 @@ export function createJobsRouter({ jobsQueue, jobHandlers, config, jobTeamIds }:
     const teamId = c.get("teamId");
     const limitParam = Math.min(Number(c.req.query("limit")) || DEFAULT_LIMIT, MAX_LIMIT);
     const offsetParam = Math.max(Number(c.req.query("offset")) || 0, 0);
+    const searchQuery = c.req.query("q");
     const nameFilter = c.req.query("name");
     const statusFilter = c.req.query("status");
     const sinceFilter = c.req.query("since");
 
     const conditions = [eq(jobsLog.teamId, teamId)];
 
+    if (searchQuery) {
+      const pattern = `%${searchQuery}%`;
+      const match = or(ilike(jobsLog.jobName, pattern), ilike(jobsLog.jobId, pattern));
+      if (match) conditions.push(match);
+    }
     if (nameFilter) {
-      if (!isJobVisibleToTeam(nameFilter, teamId, jobTeamIds)) {
-        return c.json({
-          data: [],
-          pagination: { limit: limitParam, offset: offsetParam, total: 0 },
-        });
-      }
       conditions.push(eq(jobsLog.jobName, nameFilter));
     }
     if (statusFilter) {

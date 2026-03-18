@@ -1,8 +1,8 @@
+import { ArrowLeft, ExternalLink, Loader2, MoreHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { CopyButton } from "../components/CopyButton";
 import { Duration } from "../components/Duration";
-import { StatusBadge } from "../components/StatusBadge";
 import { useTimezoneContext } from "../contexts/TimezoneContext";
 import { type LogLine, useLogStream } from "../hooks/useLogStream";
 import { usePolling } from "../hooks/usePolling";
@@ -10,6 +10,15 @@ import { formatInTimezone } from "../hooks/useTimezone";
 import { cancelRun, fetchRun, retryRun } from "../lib/api";
 import type { RunRow } from "../lib/types";
 import { formatJson, isShellResult } from "../lib/types";
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between items-start gap-4">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm text-foreground text-right">{value}</span>
+    </div>
+  );
+}
 
 function LogBlock({
   title,
@@ -21,16 +30,19 @@ function LogBlock({
   variant?: string;
 }) {
   const codeRef = useRef<HTMLElement>(null);
-  const borderClass = variant === "error" ? "border-l-4 border-error" : "";
+  const borderClass = variant === "error" ? "border-l-4" : "";
+  const borderStyle =
+    variant === "error" ? { borderLeftColor: "var(--gruvbox-red-bright)" } : undefined;
   return (
-    <div className="card bg-base-100 shadow-sm">
-      <div className="card-body">
-        <div className="flex justify-between items-center">
-          <h2 className="card-title text-sm">{title}</h2>
-          <CopyButton getText={() => codeRef.current?.textContent ?? ""} />
-        </div>
+    <div className="bg-card border border-border rounded-xl">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h3 className="text-foreground">{title}</h3>
+        <CopyButton getText={() => codeRef.current?.textContent ?? ""} />
+      </div>
+      <div className="p-6">
         <pre
-          className={`bg-base-200 rounded-lg p-4 text-xs overflow-x-auto max-h-[32rem] whitespace-pre-wrap break-words ${borderClass}`}
+          className={`text-sm text-foreground font-mono whitespace-pre-wrap break-words ${borderClass}`}
+          style={borderStyle}
         >
           <code ref={codeRef}>{content}</code>
         </pre>
@@ -60,39 +72,48 @@ function StreamingLogBlock({ lines }: { lines: LogLine[] }) {
 
   if (lines.length === 0) {
     return (
-      <div className="card bg-base-100 shadow-sm">
-        <div className="card-body">
-          <div className="flex items-center gap-2">
-            <h2 className="card-title text-sm">Live Output</h2>
-            <span className="loading loading-dots loading-xs text-warning" />
-          </div>
-          <p className="text-sm text-base-content/50">Waiting for output...</p>
+      <div className="bg-card border border-border rounded-xl">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <h3 className="text-foreground">Live Output</h3>
+          <MoreHorizontal
+            className="w-4 h-4 animate-pulse"
+            style={{ color: "var(--gruvbox-yellow-bright)" }}
+          />
+        </div>
+        <div className="p-6">
+          <p className="text-sm text-muted-foreground">Waiting for output...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="card bg-base-100 shadow-sm">
-      <div className="card-body">
-        <div className="flex items-center gap-2">
-          <h2 className="card-title text-sm">Live Output</h2>
-          <span className="loading loading-dots loading-xs text-warning" />
-        </div>
+    <div className="bg-card border border-border rounded-xl">
+      <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+        <h3 className="text-foreground">Live Output</h3>
+        <Loader2
+          className="w-4 h-4 animate-spin"
+          style={{ color: "var(--gruvbox-yellow-bright)" }}
+        />
+      </div>
+      <div className="p-6">
         <pre
           ref={containerRef}
           onScroll={handleScroll}
-          className="bg-base-200 rounded-lg p-4 text-xs overflow-x-auto max-h-[32rem] whitespace-pre-wrap break-words overflow-y-auto"
+          className="text-sm text-foreground font-mono whitespace-pre-wrap break-words max-h-[32rem] overflow-y-auto"
         >
           <code>
-            {lines.map((line) => {
-              const cls = line.stream === "stderr" ? "text-error" : "";
-              return (
-                <span key={line.id} className={`block ${cls}`}>
-                  {line.text}
-                </span>
-              );
-            })}
+            {lines.map((line) => (
+              <span
+                key={line.id}
+                className="block"
+                style={
+                  line.stream === "stderr" ? { color: "var(--gruvbox-red-bright)" } : undefined
+                }
+              >
+                {line.text}
+              </span>
+            ))}
           </code>
         </pre>
       </div>
@@ -103,13 +124,13 @@ function StreamingLogBlock({ lines }: { lines: LogLine[] }) {
 function JsonBlock({ title, value }: { title: string; value: unknown }) {
   const codeRef = useRef<HTMLElement>(null);
   return (
-    <div className="card bg-base-100 shadow-sm">
-      <div className="card-body">
-        <div className="flex justify-between items-center">
-          <h2 className="card-title text-sm">{title}</h2>
-          <CopyButton getText={() => codeRef.current?.textContent ?? ""} />
-        </div>
-        <pre className="bg-base-200 rounded-lg p-4 text-xs overflow-x-auto max-h-96 whitespace-pre-wrap break-words">
+    <div className="bg-card border border-border rounded-xl">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h3 className="text-foreground">{title}</h3>
+        <CopyButton getText={() => codeRef.current?.textContent ?? ""} />
+      </div>
+      <div className="p-6">
+        <pre className="text-sm text-foreground font-mono whitespace-pre-wrap break-words">
           <code ref={codeRef}>{formatJson(value)}</code>
         </pre>
       </div>
@@ -135,11 +156,12 @@ function CancelButton({ jobId, onCancelled }: { jobId: string; onCancelled: () =
   return (
     <button
       type="button"
-      className="btn btn-error btn-sm gap-1"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+      style={{ backgroundColor: "var(--destructive)", color: "var(--destructive-foreground)" }}
       onClick={handleCancel}
       disabled={cancelling}
     >
-      {cancelling ? <span className="loading loading-spinner loading-xs" /> : "Cancel"}
+      {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Cancel"}
     </button>
   );
 }
@@ -162,11 +184,12 @@ function RetryButton({ jobId, onRetried }: { jobId: string; onRetried: () => voi
   return (
     <button
       type="button"
-      className="btn btn-warning btn-sm gap-1"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+      style={{ backgroundColor: "var(--gruvbox-orange-bright)", color: "var(--gruvbox-bg0)" }}
       onClick={handleRetry}
       disabled={retrying}
     >
-      {retrying ? <span className="loading loading-spinner loading-xs" /> : "Retry"}
+      {retrying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Retry"}
     </button>
   );
 }
@@ -201,9 +224,12 @@ export function RunDetailPage() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-lg text-error">{error}</p>
-        <Link to="/" className="btn btn-sm btn-primary mt-4">
-          ← Back to runs
+        <h2 className="text-foreground mb-4">Run not found</h2>
+        <Link
+          to="/"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          &larr; Back to runs
         </Link>
       </div>
     );
@@ -212,81 +238,99 @@ export function RunDetailPage() {
   if (!run) {
     return (
       <div className="flex justify-center py-12">
-        <span className="loading loading-spinner loading-lg" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   const shell = isShellResult(run.result) ? run.result : null;
 
+  const statusColor =
+    run.status === "completed"
+      ? "var(--gruvbox-green)"
+      : run.status === "processing" || run.status === "queued"
+        ? "var(--gruvbox-blue-bright)"
+        : "var(--gruvbox-red-bright)";
+
   return (
     <>
-      <div className="mb-4 flex gap-2">
-        <Link to="/" className="btn btn-ghost btn-sm gap-1">
-          ← Back to runs
+      {/* Back button and Raw Logs */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to runs
         </Link>
         <a
           href={`/api/dashboard/runs/${run.jobId}/raw`}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-ghost btn-sm gap-1"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Raw Logs ↗
+          Raw Logs
+          <ExternalLink className="w-4 h-4" />
         </a>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-6">
-        <h1 className="text-2xl font-bold font-mono">{run.jobName}</h1>
-        <StatusBadge status={run.status} />
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-3 mb-8">
+        <h1 className="text-foreground font-mono">{run.jobName}</h1>
+        <span
+          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+          style={{ backgroundColor: statusColor, color: "var(--gruvbox-bg0)" }}
+        >
+          {run.status}
+        </span>
         {shell && typeof shell.exitCode === "number" && (
           <span
-            className={`badge badge-sm ${shell.exitCode === 0 ? "badge-success" : "badge-error"}`}
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+            style={{ backgroundColor: "var(--gruvbox-yellow)", color: "var(--gruvbox-bg0)" }}
           >
             exit {shell.exitCode}
           </span>
         )}
-        {isActive && <span className="loading loading-spinner loading-xs text-warning" />}
+        {isActive && (
+          <Loader2
+            className="w-4 h-4 animate-spin"
+            style={{ color: "var(--gruvbox-yellow-bright)" }}
+          />
+        )}
         {isActive && <CancelButton jobId={run.jobId} onCancelled={load} />}
         {isRetryable && <RetryButton jobId={run.jobId} onRetried={load} />}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="card bg-base-100 shadow-sm">
-          <div className="card-body">
-            <h2 className="card-title text-sm">Timing</h2>
-            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-base-content/60">Duration</dt>
-              <dd>
+      {/* Info Cards Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h3 className="text-foreground mb-4">Timing</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-start gap-4">
+              <span className="text-sm text-muted-foreground">Duration</span>
+              <span className="text-sm text-foreground text-right">
                 <Duration startedAt={run.startedAt} finishedAt={run.finishedAt} />
-              </dd>
-              <dt className="text-base-content/60">Created</dt>
-              <dd className="font-mono text-xs">{formatInTimezone(run.createdAt, timezone)}</dd>
-              <dt className="text-base-content/60">Started</dt>
-              <dd className="font-mono text-xs">{formatInTimezone(run.startedAt, timezone)}</dd>
-              <dt className="text-base-content/60">Finished</dt>
-              <dd className="font-mono text-xs">{formatInTimezone(run.finishedAt, timezone)}</dd>
-            </dl>
+              </span>
+            </div>
+            <InfoRow label="Created" value={formatInTimezone(run.createdAt, timezone)} />
+            <InfoRow label="Started" value={formatInTimezone(run.startedAt, timezone)} />
+            <InfoRow label="Finished" value={formatInTimezone(run.finishedAt, timezone)} />
           </div>
         </div>
 
-        <div className="card bg-base-100 shadow-sm">
-          <div className="card-body">
-            <h2 className="card-title text-sm">Metadata</h2>
-            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-base-content/60">Run ID</dt>
-              <dd className="font-mono text-xs">{run.id}</dd>
-              <dt className="text-base-content/60">Job ID</dt>
-              <dd className="font-mono text-xs">{run.jobId}</dd>
-              <dt className="text-base-content/60">Queue</dt>
-              <dd className="font-mono text-xs">{run.queueName}</dd>
-              <dt className="text-base-content/60">Error</dt>
-              <dd>{run.error ? <span className="text-error">Yes</span> : "No"}</dd>
-            </dl>
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h3 className="text-foreground mb-4">Metadata</h3>
+          <div className="space-y-3">
+            <InfoRow label="Run ID" value={String(run.id)} />
+            <InfoRow label="Job ID" value={run.jobId} />
+            <InfoRow label="Queue" value={run.queueName} />
+            <InfoRow label="Error" value={run.error ? "Yes" : "No"} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      {/* Logs / Streaming / Payload */}
+      <div className="grid grid-cols-1 gap-6">
         {isStreaming || (isProcessing && streamLines.length > 0) ? (
           <StreamingLogBlock lines={streamLines} />
         ) : (
@@ -295,10 +339,12 @@ export function RunDetailPage() {
               <LogBlock title="Logs" content={run.logs} />
             ) : (
               !isActive && (
-                <div className="card bg-base-100 shadow-sm">
-                  <div className="card-body">
-                    <h2 className="card-title text-sm">Logs</h2>
-                    <p className="text-sm text-base-content/50">No logs captured for this run</p>
+                <div className="bg-card border border-border rounded-xl">
+                  <div className="px-6 py-4 border-b border-border">
+                    <h3 className="text-foreground">Logs</h3>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-sm text-muted-foreground">No logs captured for this run</p>
                   </div>
                 </div>
               )

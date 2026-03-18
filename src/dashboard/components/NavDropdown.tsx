@@ -1,14 +1,16 @@
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { NavLink } from "react-router";
 
 const CLOSE_DELAY_MS = 300;
 
 interface NavDropdownProps {
   label: string;
   isActive?: boolean;
-  children: ReactNode;
+  items: readonly { to: string; label: string }[];
 }
 
-export function NavDropdown({ label, isActive, children }: NavDropdownProps) {
+export function NavDropdown({ label, isActive, items }: NavDropdownProps) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -28,34 +30,40 @@ export function NavDropdown({ label, isActive, children }: NavDropdownProps) {
   }, []);
 
   return (
-    <li className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+    <nav className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
       <button
         type="button"
-        className={`flex items-center gap-1 ${isActive ? "menu-active" : ""}`}
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
+          isActive
+            ? "bg-accent text-foreground"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+        }`}
         onClick={() => setOpen((v) => !v)}
       >
         {label}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        >
-          <title>Toggle menu</title>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <ul className="absolute top-full right-0 mt-1 bg-base-100 rounded-box z-50 min-w-36 shadow-lg menu p-2">
-          {children}
-        </ul>
+        <div className="absolute top-full right-0 pt-1 w-48 z-50">
+          <div className="bg-card border border-border rounded-lg shadow-lg py-2">
+            {items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive: active }) =>
+                  `block px-4 py-2 text-sm transition-colors ${
+                    active
+                      ? "text-foreground hover:bg-accent"
+                      : "text-muted-foreground hover:bg-accent"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
       )}
-    </li>
+    </nav>
   );
 }

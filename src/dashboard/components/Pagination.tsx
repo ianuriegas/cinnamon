@@ -14,22 +14,30 @@ export function Pagination({ total, limit, offset, onPageChange }: PaginationPro
   const prevOffset = Math.max(0, offset - limit);
   const nextOffset = offset + limit;
 
+  const buttonBase = "px-3 py-1.5 text-sm rounded-lg border border-border transition-colors";
+
   return (
-    <div className="join mt-4 flex justify-center">
+    <div className="mt-4 flex justify-center items-center gap-1">
       <button
         type="button"
-        className="join-item btn btn-sm"
+        className={`${buttonBase} ${offset <= 0 ? "opacity-40 cursor-not-allowed" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
         disabled={offset <= 0}
         onClick={() => onPageChange(prevOffset)}
       >
         «
       </button>
-      <button type="button" className="join-item btn btn-sm btn-active">
+      <span
+        className="px-3 py-1.5 text-sm rounded-lg"
+        style={{
+          backgroundColor: "var(--gruvbox-orange-bright)",
+          color: "var(--gruvbox-bg0)",
+        }}
+      >
         {currentPage} / {totalPages}
-      </button>
+      </span>
       <button
         type="button"
-        className="join-item btn btn-sm"
+        className={`${buttonBase} ${nextOffset >= total ? "opacity-40 cursor-not-allowed" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
         disabled={nextOffset >= total}
         onClick={() => onPageChange(nextOffset)}
       >

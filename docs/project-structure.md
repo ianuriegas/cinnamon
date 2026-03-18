@@ -39,8 +39,9 @@ cli/
     validate.ts       Validate cinnamon.config.ts locally (no server)
     init.ts           Scaffold ~/.cinnamon/config.json
 create-cinnamon/      Scaffolder for new projects (bun create cinnamon)
-  index.ts            Interactive CLI (Docker or Source mode, installs deps, inits git)
-  templates/          Boilerplate files copied into new projects (docker/, source/)
+  index.ts            Interactive CLI (Docker mode, optional auth setup, inits git)
+  templates/
+    docker/           Boilerplate files copied into new projects
 scripts/              Dev tools (seed team, migration drop, DB reset, release)
   release.ts          Version bump, commit, tag, push
 src/
@@ -76,9 +77,9 @@ src/
     layouts/
       BaseLayout.tsx  Shell layout (navbar, theme toggle, <Outlet />)
     pages/            Full-page views (RunsPage, RunDetailPage, JobsPage, ApiKeysPage, UsersPage, TeamsPage, etc.)
-    components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo, ProfileDropdown)
+    components/       Shared UI (StatusBadge, Pagination, TriggerButton, CopyButton, Duration, TimeAgo, ProfileDropdown, SearchInput, FilterPills, FiltersToggle, TeamFilterDropdown)
     contexts/         React contexts (TimezoneContext)
-    hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE), useAuth, useTimezone
+    hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE), useAuth, useTimezone, useUrlFilters
     lib/
       api.ts          Client-side fetch wrapper for /api/dashboard/*
       types.ts        Shared TypeScript types

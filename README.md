@@ -29,12 +29,7 @@ bun create cinnamon my-app
 cd my-app
 ```
 
-The wizard lets you choose a setup mode:
-
-- **Docker Image** (recommended) -- runs cinnamon via a pre-built Docker image. Requires Docker.
-- **Full Source** -- copies the full cinnamon source into your project. Run services locally with Bun.
-
-Both modes use the same commands:
+The wizard scaffolds a Docker-based project using the pre-built cinnamon image. Requires Docker.
 
 ```bash
 bun run db:migrate

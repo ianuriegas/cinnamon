@@ -1,11 +1,15 @@
-import { Check, ChevronDown, Eye, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Eye, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { Duration } from "../components/Duration";
+import { FilterPills } from "../components/FilterPills";
+import { FiltersToggle } from "../components/FiltersToggle";
 import { Pagination } from "../components/Pagination";
+import { SearchInput } from "../components/SearchInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { TimeAgo } from "../components/TimeAgo";
 import { usePolling } from "../hooks/usePolling";
+import { useUrlFilters } from "../hooks/useUrlFilters";
 import { fetchRuns } from "../lib/api";
 import type { PaginationInfo, RunRow, RunsFilters } from "../lib/types";
 
@@ -20,20 +24,26 @@ const STATUS_OPTIONS = [
   { value: "interrupted", label: "Interrupted", color: "var(--gruvbox-orange)" },
 ] as const;
 
+const FILTER_KEYS = ["q", "name", "status", "filters", "offset", "limit"] as const;
+
 export function RunsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { filters, setFilter, clearFilters, activeFilterCount, searchParams, setSearchParams } =
+    useUrlFilters(FILTER_KEYS, {
+      excludeFromCount: ["q", "filters", "offset", "limit"],
+      resetOnChange: ["offset"],
+    });
 
-  const searchQuery = searchParams.get("q") ?? "";
-  const filterName = searchParams.get("name") ?? "";
-  const filterStatus = searchParams.get("status") ?? "";
-  const filtersOpen = searchParams.get("filters") === "1" || !!(filterName || filterStatus);
+  const searchQuery = filters.q;
+  const filterName = filters.name;
+  const filterStatus = filters.status;
+  const filtersOpen = filters.filters === "1" || !!(filterName || filterStatus);
 
-  const filters: RunsFilters = useMemo(
+  const apiFilters: RunsFilters = useMemo(
     () => ({ q: searchQuery, name: filterName, status: filterStatus }),
     [searchQuery, filterName, filterStatus],
   );
-  const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
-  const limit = Number(searchParams.get("limit")) || DEFAULT_LIMIT;
+  const offset = Math.max(Number(filters.offset) || 0, 0);
+  const limit = Number(filters.limit) || DEFAULT_LIMIT;
 
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -45,12 +55,12 @@ export function RunsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetchRuns(filters, { limit, offset });
+    const res = await fetchRuns(apiFilters, { limit, offset });
     setRuns(res.data);
     setPagination(res.pagination);
     setJobNames(res.jobNames);
     setIsLoading(false);
-  }, [filters, limit, offset]);
+  }, [apiFilters, limit, offset]);
 
   useEffect(() => {
     load();
@@ -58,35 +68,11 @@ export function RunsPage() {
 
   usePolling(load, 5000);
 
-  function updateParam(key: string, value: string | null) {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set(key, value);
-        else next.delete(key);
-        if (key !== "offset") next.delete("offset");
-        return next;
-      },
-      { replace: true },
-    );
-  }
-
-  function clearFilters() {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams();
-      const q = prev.get("q");
-      if (q) next.set("q", q);
-      return next;
-    });
-  }
-
   function handlePageChange(newOffset: number) {
     const next = new URLSearchParams(searchParams);
     next.set("offset", String(newOffset));
     setSearchParams(next);
   }
-
-  const activeFilterCount = [filterName, filterStatus].filter(Boolean).length;
 
   return (
     <>
@@ -94,90 +80,40 @@ export function RunsPage() {
         <h1 className="text-foreground mb-2">Job Runs</h1>
         <p className="text-muted-foreground mb-6">Monitor and inspect your job executions.</p>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by job name or ID..."
-            value={searchQuery}
-            onChange={(e) => updateParam("q", e.target.value || null)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={(v) => setFilter("q", v || null)}
+          placeholder="Search by job name or ID..."
+          className="mb-4"
+        />
 
-        {/* Filters toggle */}
         <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => updateParam("filters", filtersOpen ? null : "1")}
-            className={`flex items-center gap-1.5 text-xs transition-colors ${
-              filtersOpen || activeFilterCount > 0
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span
-                className="px-1.5 py-0.5 rounded-full text-xs"
-                style={{
-                  backgroundColor: "var(--gruvbox-orange-bright)",
-                  color: "var(--gruvbox-bg0)",
-                }}
-              >
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          <FiltersToggle
+            open={filtersOpen}
+            activeCount={activeFilterCount}
+            onToggle={() => setFilter("filters", filtersOpen ? null : "1")}
+          />
 
           {filtersOpen && (
             <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
-              {/* Job name filter dropdown */}
               <JobFilterDropdown
                 jobNames={jobNames}
                 selected={filterName}
-                onSelect={(j) => updateParam("name", filterName === j ? null : j)}
+                onSelect={(j) => setFilter("name", filterName === j ? null : j)}
               />
 
-              {/* Status filter pills */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground mr-1">Status</span>
-                {STATUS_OPTIONS.map((s) => {
-                  const isActive = filterStatus === s.value;
-                  return (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => updateParam("status", isActive ? null : s.value)}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-all flex items-center gap-1.5 capitalize ${
-                        isActive
-                          ? "border-transparent"
-                          : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
-                      }`}
-                      style={
-                        isActive
-                          ? { backgroundColor: s.color, color: "var(--gruvbox-bg0)" }
-                          : undefined
-                      }
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{
-                          backgroundColor: isActive ? "var(--gruvbox-bg0)" : s.color,
-                        }}
-                      />
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <FilterPills
+                label="Status"
+                options={STATUS_OPTIONS}
+                value={filterStatus}
+                onChange={(v) => setFilter("status", v || null)}
+                showDot
+              />
 
               {activeFilterCount > 0 && (
                 <button
                   type="button"
-                  onClick={clearFilters}
+                  onClick={() => clearFilters(["name", "status"])}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
                 >
                   Clear all

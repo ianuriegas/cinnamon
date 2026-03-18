@@ -16,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "f4411f5d9082c6c6a108bfc552dcb0e6dac09e16b65d38a896f7cedd4ec04204"
     },
+    "component-refactoring": {
+      "source": "langgenius/dify",
+      "sourceType": "github",
+      "computedHash": "23abb4513e2b8f3d1d670181d88e92f49b78c519b51f1d71f381184481419dca"
+    },
     "docs-cleaner": {
       "source": "daymade/claude-code-skills",
       "sourceType": "github",
@@ -30,6 +35,11 @@
       "source": "ccheney/robust-skills",
       "sourceType": "github",
       "computedHash": "60534e1aa880981e26360db836115df77a8e73be219c7a027e635802686b5bd9"
+    },
+    "refactor": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "87789a786b96f99ba0680e89345a975106e10e7db1071c7cdc2e76d507c449d6"
     },
     "typescript-advanced-types": {
       "source": "wshobson/agents",

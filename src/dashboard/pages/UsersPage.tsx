@@ -1,17 +1,12 @@
-import {
-  Check,
-  ChevronDown,
-  Clock,
-  Search,
-  Shield,
-  SlidersHorizontal,
-  Users,
-  X,
-} from "lucide-react";
+import { Check, Clock, Shield, Users, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { FilterPills } from "../components/FilterPills";
+import { FiltersToggle } from "../components/FiltersToggle";
+import { SearchInput } from "../components/SearchInput";
+import { TeamFilterDropdown } from "../components/TeamFilterDropdown";
 import { TimeAgo } from "../components/TimeAgo";
 import { usePolling } from "../hooks/usePolling";
+import { useUrlFilters } from "../hooks/useUrlFilters";
 import {
   approveAccessRequest,
   denyAccessRequest,
@@ -41,18 +36,31 @@ function avatarColor(str: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+const ROLE_OPTIONS = [
+  { value: "Super Admin", label: "Super Admin", color: "var(--gruvbox-orange)" },
+  { value: "Member", label: "Member", color: "var(--gruvbox-orange)" },
+] as const;
+
+const USER_STATUS_OPTIONS = [
+  { value: "active", label: "Active", color: "var(--gruvbox-green)" },
+  { value: "inactive", label: "Inactive", color: "var(--gruvbox-bg4)" },
+] as const;
+
 type TabType = "users" | "access-requests";
 
-export function UsersPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+const FILTER_KEYS = ["q", "tab", "role", "team", "status", "filters"] as const;
 
-  const activeTab = (searchParams.get("tab") as TabType) || "users";
-  const searchQuery = searchParams.get("q") ?? "";
-  const filterRole = searchParams.get("role") ?? "";
-  const filterTeam = searchParams.get("team") ?? "";
-  const filterStatus = searchParams.get("status") ?? "";
-  const filtersOpen =
-    searchParams.get("filters") === "1" || !!(filterRole || filterTeam || filterStatus);
+export function UsersPage() {
+  const { filters, setFilter, clearFilters, activeFilterCount } = useUrlFilters(FILTER_KEYS, {
+    excludeFromCount: ["q", "tab", "filters"],
+  });
+
+  const activeTab = (filters.tab as TabType) || "users";
+  const searchQuery = filters.q;
+  const filterRole = filters.role;
+  const filterTeam = filters.team;
+  const filterStatus = filters.status;
+  const filtersOpen = filters.filters === "1" || !!(filterRole || filterTeam || filterStatus);
 
   const [usersList, setUsersList] = useState<UserRow[]>([]);
   const [requests, setRequests] = useState<AccessRequestRow[]>([]);
@@ -80,34 +88,6 @@ export function UsersPage() {
 
   usePolling(load, 10000);
 
-  const updateParam = useCallback(
-    (key: string, value: string | null) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (value) next.set(key, value);
-          else next.delete(key);
-          return next;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  const clearFilters = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("role");
-        next.delete("team");
-        next.delete("status");
-        return next;
-      },
-      { replace: true },
-    );
-  }, [setSearchParams]);
-
   async function handleApprove(id: number, teamIds?: number[]) {
     await approveAccessRequest(id, teamIds);
     setApproveModal(null);
@@ -132,7 +112,7 @@ export function UsersPage() {
   }
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
-  const activeFilterCount = [filterRole, filterTeam, filterStatus].filter(Boolean).length;
+  const teamNames = useMemo(() => teams.map((t) => t.name).sort(), [teams]);
 
   const filteredUsers = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -177,7 +157,7 @@ export function UsersPage() {
         <div className="flex gap-1 mb-6 border-b border-border">
           <button
             type="button"
-            onClick={() => updateParam("tab", null)}
+            onClick={() => setFilter("tab", null)}
             className={`px-4 py-3 text-sm transition-all relative ${
               activeTab === "users"
                 ? "text-foreground"
@@ -206,7 +186,7 @@ export function UsersPage() {
           </button>
           <button
             type="button"
-            onClick={() => updateParam("tab", "access-requests")}
+            onClick={() => setFilter("tab", "access-requests")}
             className={`px-4 py-3 text-sm transition-all relative ${
               activeTab === "access-requests"
                 ? "text-foreground"
@@ -237,128 +217,53 @@ export function UsersPage() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder={
-              activeTab === "users"
-                ? "Search users by name or email..."
-                : "Search requests by name or email..."
-            }
-            value={searchQuery}
-            onChange={(e) => updateParam("q", e.target.value || null)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={(v) => setFilter("q", v || null)}
+          placeholder={
+            activeTab === "users"
+              ? "Search users by name or email..."
+              : "Search requests by name or email..."
+          }
+          className="mb-4"
+        />
 
         {/* Filters (Users tab only) */}
         {activeTab === "users" && (
           <div className="mb-6">
-            <button
-              type="button"
-              onClick={() => updateParam("filters", filtersOpen ? null : "1")}
-              className={`flex items-center gap-1.5 text-xs transition-colors ${
-                filtersOpen || activeFilterCount > 0
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span
-                  className="px-1.5 py-0.5 rounded-full text-xs"
-                  style={{
-                    backgroundColor: "var(--gruvbox-orange-bright)",
-                    color: "var(--gruvbox-bg0)",
-                  }}
-                >
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+            <FiltersToggle
+              open={filtersOpen}
+              activeCount={activeFilterCount}
+              onToggle={() => setFilter("filters", filtersOpen ? null : "1")}
+            />
 
             {filtersOpen && (
               <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
-                {/* Role filter */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground mr-1">Role</span>
-                  {(["Super Admin", "Member"] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => updateParam("role", filterRole === r ? null : r)}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
-                        filterRole === r
-                          ? "border-transparent"
-                          : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
-                      }`}
-                      style={
-                        filterRole === r
-                          ? {
-                              backgroundColor: "var(--gruvbox-orange)",
-                              color: "var(--gruvbox-bg0)",
-                            }
-                          : undefined
-                      }
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Team filter dropdown */}
-                <TeamFilterDropdown
-                  teams={teams}
-                  selected={filterTeam || null}
-                  onSelect={(t) => updateParam("team", filterTeam === t ? null : t)}
+                <FilterPills
+                  label="Role"
+                  options={ROLE_OPTIONS}
+                  value={filterRole}
+                  onChange={(v) => setFilter("role", v || null)}
                 />
 
-                {/* Status filter */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground mr-1">Status</span>
-                  {(["active", "inactive"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => updateParam("status", filterStatus === s ? null : s)}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-all flex items-center gap-1.5 ${
-                        filterStatus === s
-                          ? "border-transparent"
-                          : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
-                      }`}
-                      style={
-                        filterStatus === s
-                          ? {
-                              backgroundColor:
-                                s === "active" ? "var(--gruvbox-green)" : "var(--gruvbox-bg4)",
-                              color: "var(--gruvbox-bg0)",
-                            }
-                          : undefined
-                      }
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{
-                          backgroundColor:
-                            filterStatus === s
-                              ? "var(--gruvbox-bg0)"
-                              : s === "active"
-                                ? "var(--gruvbox-green-bright)"
-                                : "var(--gruvbox-bg4)",
-                        }}
-                      />
-                      {s === "active" ? "Active" : "Inactive"}
-                    </button>
-                  ))}
-                </div>
+                <TeamFilterDropdown
+                  teams={teamNames}
+                  selected={filterTeam || null}
+                  onSelect={(t) => setFilter("team", filterTeam === t ? null : t)}
+                />
+
+                <FilterPills
+                  label="Status"
+                  options={USER_STATUS_OPTIONS}
+                  value={filterStatus}
+                  onChange={(v) => setFilter("status", v || null)}
+                  showDot
+                />
 
                 {activeFilterCount > 0 && (
                   <button
                     type="button"
-                    onClick={clearFilters}
+                    onClick={() => clearFilters(["role", "team", "status"])}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
                   >
                     Clear all
@@ -652,109 +557,6 @@ function SkeletonCards() {
   );
 }
 
-/* ─── Team Filter Dropdown ─── */
-
-function TeamFilterDropdown({
-  teams,
-  selected,
-  onSelect,
-}: {
-  teams: TeamRow[];
-  selected: string | null;
-  onSelect: (team: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [teamSearch, setTeamSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setTeamSearch("");
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    setTimeout(() => inputRef.current?.focus(), 0);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  const filtered = teams.filter((t) => t.name.toLowerCase().includes(teamSearch.toLowerCase()));
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground mr-1">Team</span>
-      <div className="relative" ref={ref}>
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className={`px-2.5 py-1 rounded-full text-xs border transition-all flex items-center gap-1.5 ${
-            selected
-              ? "border-transparent"
-              : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
-          }`}
-          style={
-            selected
-              ? { backgroundColor: "var(--gruvbox-blue)", color: "var(--gruvbox-bg0)" }
-              : undefined
-          }
-        >
-          {selected ?? "Select..."}
-          <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-
-        {open && (
-          <div className="absolute top-full left-0 mt-1 w-52 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-            <div className="p-2 border-b border-border">
-              <div className="relative">
-                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Search teams..."
-                  value={teamSearch}
-                  onChange={(e) => setTeamSearch(e.target.value)}
-                  className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/50"
-                />
-              </div>
-            </div>
-            <div className="max-h-48 overflow-y-auto py-1">
-              {filtered.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-muted-foreground">No teams found</p>
-              ) : (
-                filtered.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      onSelect(t.name);
-                      setOpen(false);
-                      setTeamSearch("");
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-accent transition-colors ${
-                      selected === t.name ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {t.name}
-                    {selected === t.name && (
-                      <Check
-                        className="w-3.5 h-3.5"
-                        style={{ color: "var(--gruvbox-green-bright)" }}
-                      />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Manage User Modal ─── */
 
 function ManageUserModal({
@@ -820,13 +622,11 @@ function ManageUserModal({
 
         {/* Body */}
         <div className="px-6 py-5 space-y-5">
-          {/* Role (read-only) */}
           <div>
             <span className="text-sm text-muted-foreground mb-2 block">Role</span>
             <RoleBadge label={user.isSuperAdmin ? "Super Admin" : "Member"} />
           </div>
 
-          {/* Teams */}
           {!user.isSuperAdmin && (
             <div>
               <span className="text-sm text-muted-foreground mb-2 block">Teams</span>
@@ -866,7 +666,6 @@ function ManageUserModal({
             </div>
           )}
 
-          {/* Status */}
           {!user.isSuperAdmin && (
             <div>
               <span className="text-sm text-muted-foreground mb-2 block">Status</span>

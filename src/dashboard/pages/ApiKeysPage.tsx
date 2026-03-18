@@ -11,15 +11,18 @@ import {
   Pencil,
   Plus,
   RotateCcw,
-  Search,
   Shield,
   X,
 } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
+import { FilterPills } from "../components/FilterPills";
+import { SearchInput } from "../components/SearchInput";
+import { TeamFilterDropdown } from "../components/TeamFilterDropdown";
 import { TimeAgo } from "../components/TimeAgo";
 import { usePolling } from "../hooks/usePolling";
+import { useUrlFilters } from "../hooks/useUrlFilters";
 import {
   createApiKey,
   fetchApiKeys,
@@ -39,8 +42,23 @@ const STATUS_CONFIG: Record<KeyStatus, { bg: string; fg: string; label: string }
   expired: { bg: "var(--gruvbox-bg4)", fg: "var(--gruvbox-bg0)", label: "Expired" },
 };
 
+const KEY_STATUS_OPTIONS = [
+  { value: "active", label: "Active", color: "var(--gruvbox-green)" },
+  { value: "revoked", label: "Revoked", color: "var(--gruvbox-red)" },
+  { value: "expired", label: "Expired", color: "var(--gruvbox-bg4)" },
+] as const;
+
+const FILTER_KEYS = ["q", "status", "team"] as const;
+
 export function ApiKeysPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { filters, setFilter, clearFilters, activeFilterCount } = useUrlFilters(FILTER_KEYS, {
+    excludeFromCount: ["q"],
+  });
+
+  const searchQuery = filters.q;
+  const filterStatus = (filters.status as KeyStatus) || null;
+  const filterTeam = filters.team || null;
+
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -53,25 +71,6 @@ export function ApiKeysPage() {
   } | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [revealedId, setRevealedId] = useState<number | null>(null);
-
-  const searchQuery = searchParams.get("q") ?? "";
-  const filterStatus = (searchParams.get("status") as KeyStatus) || null;
-  const filterTeam = searchParams.get("team") ?? null;
-
-  const updateParam = useCallback(
-    (key: string, value: string | null) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (value) next.set(key, value);
-          else next.delete(key);
-          return next;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
 
   const load = useCallback(async () => {
     const res = await fetchApiKeys();
@@ -104,8 +103,6 @@ export function ApiKeysPage() {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   }
-
-  const activeFilterCount = [filterStatus, filterTeam].filter(Boolean).length;
 
   const filteredKeys = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -170,56 +167,34 @@ export function ApiKeysPage() {
         />
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by label, team, or key..."
-          value={searchQuery}
-          onChange={(e) => updateParam("q", e.target.value || null)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
-        />
-      </div>
+      <SearchInput
+        value={searchQuery}
+        onChange={(v) => setFilter("q", v || null)}
+        placeholder="Search by label, team, or key..."
+        className="mb-4"
+      />
 
       {/* Filter pills */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <span className="text-xs text-muted-foreground mr-1">Status</span>
-        {(["active", "revoked", "expired"] as KeyStatus[]).map((s) => {
-          const sc = STATUS_CONFIG[s];
-          const isActive = filterStatus === s;
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => updateParam("status", isActive ? null : s)}
-              className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
-                isActive
-                  ? "border-transparent"
-                  : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
-              }`}
-              style={isActive ? { backgroundColor: sc.bg, color: sc.fg } : undefined}
-            >
-              {sc.label}
-            </button>
-          );
-        })}
+        <FilterPills
+          label="Status"
+          options={KEY_STATUS_OPTIONS}
+          value={filters.status}
+          onChange={(v) => setFilter("status", v || null)}
+        />
 
         {teamNames.length > 0 && (
           <TeamFilterDropdown
             teams={teamNames}
             selected={filterTeam}
-            onSelect={(t) => updateParam("team", filterTeam === t ? null : t)}
+            onSelect={(t) => setFilter("team", filterTeam === t ? null : t)}
           />
         )}
 
         {activeFilterCount > 0 && (
           <button
             type="button"
-            onClick={() => {
-              updateParam("status", null);
-              updateParam("team", null);
-            }}
+            onClick={() => clearFilters(["status", "team"])}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 ml-2"
           >
             Clear all
@@ -547,109 +522,6 @@ function SkeletonCards() {
   );
 }
 
-/* ─── Team Filter Dropdown ─── */
-
-function TeamFilterDropdown({
-  teams,
-  selected,
-  onSelect,
-}: {
-  teams: string[];
-  selected: string | null;
-  onSelect: (t: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [teamSearch, setTeamSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setTeamSearch("");
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    setTimeout(() => inputRef.current?.focus(), 0);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  const filtered = teams.filter((t) => t.toLowerCase().includes(teamSearch.toLowerCase()));
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground mr-1">Team</span>
-      <div className="relative" ref={ref}>
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className={`px-2.5 py-1 rounded-full text-xs border transition-all flex items-center gap-1.5 ${
-            selected
-              ? "border-transparent"
-              : "border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
-          }`}
-          style={
-            selected
-              ? { backgroundColor: "var(--gruvbox-blue)", color: "var(--gruvbox-bg0)" }
-              : undefined
-          }
-        >
-          {selected || "Select..."}
-          <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-
-        {open && (
-          <div className="absolute top-full left-0 mt-1 w-52 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-            <div className="p-2 border-b border-border">
-              <div className="relative">
-                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Search teams..."
-                  value={teamSearch}
-                  onChange={(e) => setTeamSearch(e.target.value)}
-                  className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/50"
-                />
-              </div>
-            </div>
-            <div className="max-h-48 overflow-y-auto py-1">
-              {filtered.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-muted-foreground">No teams found</p>
-              ) : (
-                filtered.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      onSelect(t);
-                      setOpen(false);
-                      setTeamSearch("");
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-accent transition-colors ${
-                      selected === t ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {t}
-                    {selected === t && (
-                      <Check
-                        className="w-3.5 h-3.5"
-                        style={{ color: "var(--gruvbox-green-bright)" }}
-                      />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Create Key Modal ─── */
 
 const EXPIRATION_OPTIONS = [
@@ -775,7 +647,6 @@ function CreateKeyModal({
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="px-6 py-5 space-y-5">
-              {/* Label */}
               <div>
                 <span className="text-sm text-muted-foreground mb-2 block">Label</span>
                 <input
@@ -787,7 +658,6 @@ function CreateKeyModal({
                 />
               </div>
 
-              {/* Team */}
               <div>
                 <span className="text-sm text-muted-foreground mb-2 block">Team</span>
                 {isLoadingTeams ? (
@@ -833,7 +703,6 @@ function CreateKeyModal({
                 )}
               </div>
 
-              {/* Expiration */}
               <div>
                 <span className="text-sm text-muted-foreground mb-2 block">Expiration</span>
                 <div className="flex flex-wrap gap-2">

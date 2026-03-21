@@ -82,6 +82,7 @@ src/
     hooks/            usePolling (interval + visibility), useTheme (toggle), useLogStream (SSE), useAuth, useTimezone, useUrlFilters
     lib/
       api.ts          Client-side fetch wrapper for /api/dashboard/*
+      clipboard.ts    copyToClipboard() with execCommand fallback for HTTP contexts
       types.ts        Shared TypeScript types
 vite.config.js        Vite config (React plugin, Tailwind, API proxy)
 src/dashboard/tsconfig.json  TypeScript config for React JSX (separate from server)

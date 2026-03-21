@@ -9,7 +9,7 @@ Cinnamon ships as a Docker Compose stack. The base `docker-compose.yml` provides
 
 ## Running locally
 
-For a new project, the fastest path is `bun create cinnamon my-app` -- see the [Getting started](../README.md#getting-started) guide. The sections below cover manual setup for existing clones.
+For a new project, the fastest path is `bun create cinnamon my-app` -- see the [Quick start](../README.md#quick-start) guide. The sections below cover manual setup for existing clones.
 
 ### With Docker Compose
 
@@ -19,7 +19,7 @@ docker compose up -d postgres redis
 bun run db:migrate
 ```
 
-See the [Getting started](../README.md#getting-started) guide for the full setup.
+See the [Quick start](../README.md#quick-start) guide for the full setup.
 
 ### Without Docker (Postgres + Redis on host)
 

@@ -1,12 +1,91 @@
-# cinnamon
+<p align="center">
+  <img src="assets/banner-dark.png" alt="cinnamon" width="600" />
+</p>
 
-A job orchestration framework powered by BullMQ, Postgres, and Hono. Define jobs in a config file, trigger them via CLI, HTTP API, or cron, and monitor everything through a built-in dashboard.
+<p align="center">
+  Background job orchestration for your monorepo.<br/>
+  Use GitHub Actions for deploys. Use Cinnamon for everything else.
+</p>
 
-- **Language-agnostic** -- run Python, Bash, Node, or any command. If it runs in a shell, cinnamon can orchestrate it.
-- **Multi-tenant** -- teams and API keys isolate workloads. Each job run is scoped to the team that triggered it. The dashboard is team-scoped for regular users; super admins see all.
-- **Durable** -- every run is logged to Postgres with status, stdout, stderr, timing, and structured results.
-- **Observable** -- query job history, inspect runs, check schedules, and stream live logs through the REST API or dashboard.
-- **Notifiable** -- get Slack, Discord, or generic webhook notifications on job success or failure.
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  <a href="https://bun.sh"><img src="https://img.shields.io/badge/runtime-Bun-f9f1e1?logo=bun" alt="Bun" /></a>
+  <a href="https://www.docker.com"><img src="https://img.shields.io/badge/deploy-Docker-2496ED?logo=docker&logoColor=white" alt="Docker" /></a>
+</p>
+
+---
+
+- **Config-driven** -- define jobs in `cinnamon.config.ts`, point them at any package in your monorepo
+- **Language-agnostic** -- Python, Bash, Node, Bun, or any shell command
+- **Scheduled + on-demand** -- cron expressions, CLI triggers, or HTTP API
+- **Durable** -- every run logged to Postgres with stdout, stderr, timing, and structured results
+- **Observable** -- built-in dashboard with live log streaming
+- **Notifiable** -- Slack, Discord, or webhook alerts on success or failure
+
+<p align="center">
+  <img src="assets/dashboard-dark.png" alt="Cinnamon Dashboard" width="800" />
+</p>
+
+## Quick start
+
+Requires [Bun](https://bun.sh) and [Docker](https://www.docker.com/).
+
+```bash
+bun create cinnamon my-app
+cd my-app
+bun run dev
+```
+
+Open the dashboard at `http://localhost:3000`. See the [full setup guide](docs/project-structure.md#scripts) for `db:migrate`, `seed:team`, and CLI configuration.
+
+## Add a job
+
+Three steps: config, script, trigger.
+
+**1. Define the job** in `cinnamon.config.ts`:
+
+```typescript
+import { defineConfig } from "./config/define-config.ts";
+
+export default defineConfig({
+  jobs: {
+    "nightly-sync": {
+      command: "bun",
+      args: ["run", "sync"],
+      cwd: "./packages/data",
+      schedule: "0 2 * * *",
+      timeout: "5m",
+      description: "Sync data from upstream API",
+      notifications: {
+        on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],
+      },
+    },
+  },
+});
+```
+
+Any command that runs in a shell works -- `python3`, `bash`, `bun`, `node`, `curl`, etc. Use `cwd` to target a specific package in your monorepo.
+
+**2. Create the script** in your package:
+
+```python
+# jobs/nightly-sync/sync.py
+import json
+
+result = {"synced": 1420, "status": "ok"}
+print(json.dumps(result))  # last JSON line → stored in jobs_log.result
+```
+
+**3. Trigger it:**
+
+```bash
+cinnamon trigger nightly-sync     # CLI
+# or
+curl -X POST http://localhost:3000/v1/jobs/nightly-sync/trigger \
+  -H "Authorization: Bearer cin_<your_key>"
+```
+
+Jobs with a `schedule` field run automatically via cron. See [Jobs and config](docs/jobs.md) and [Writing scripts](docs/writing-scripts.md) for the full spec.
 
 ## Architecture
 
@@ -20,160 +99,28 @@ flowchart LR
   Worker --> JobsLog["cinnamon.jobs_log (Postgres)"]
 ```
 
-## Getting started
-
-Requires [Bun](https://bun.sh).
-
-```bash
-bun create cinnamon my-app
-cd my-app
-```
-
-The wizard scaffolds a Docker-based project using the pre-built cinnamon image. Requires Docker.
-
-```bash
-bun run db:migrate
-bun run seed:team              # creates a team + API key (save the cin_... key)
-bun run dev
-```
-
-Open the dashboard at the URL shown after `bun run dev`.
-
-```bash
-cinnamon init                   # paste your API key when prompted
-cinnamon trigger hello-world    # trigger a job
-cinnamon status hello-world     # check the result
-```
-
-### Development (clone the repo)
-
-If you want to contribute or work on the framework itself:
-
-```bash
-git clone https://github.com/ianuriegas/cinnamon.git
-cd cinnamon
-bun install
-cp .env.example .env
-docker compose up -d postgres redis
-bun run db:migrate
-bun run seed:team
-```
-
-Then start the worker and dev server with `bun run dev`.
-
-## How to add a job
-
-Three steps: config, script, trigger.
-
-**1. Define the job** in `cinnamon.config.ts`:
-
-```typescript
-export default defineConfig({
-  jobs: {
-    "my-job": {
-      command: "python3",
-      script: "./jobs/my-job/my-script.py",
-      timeout: "30s",
-      description: "My custom job",
-    },
-  },
-});
-```
-
-Any command that can run in a shell works -- `python3`, `bash`, `bun`, `node`, `curl`, etc.
-
-**2. Create the script** at the path you specified:
-
-```python
-# jobs/my-job/my-script.py
-import json
-
-result = {"processed": 42, "status": "ok"}
-print(json.dumps(result))  # last line of JSON stdout → stored in jobs_log.result
-```
-
-**3. Trigger it:**
-
-```bash
-cinnamon trigger my-job              # via CLI
-# or
-curl -X POST http://localhost:3000/v1/jobs/my-job/trigger \
-  -H "Authorization: Bearer cin_<your_key>"
-```
-
-Add a `schedule` field (cron syntax) to run it automatically:
-
-```typescript
-"my-job": {
-  command: "python3",
-  script: "./jobs/my-job/my-script.py",
-  timeout: "30s",
-  schedule: "0 * * * *",  // every hour
-},
-```
-
-See [Jobs and config](docs/jobs.md) and [Writing scripts](docs/writing-scripts.md) for the full spec.
-
-## Notifications
-
-Jobs can send webhooks on success or failure. Cinnamon auto-detects Discord and Slack URLs and formats messages accordingly; any other URL receives a generic JSON payload.
-
-```typescript
-"my-job": {
-  command: "python3",
-  script: "./jobs/my-job/my-script.py",
-  timeout: "30s",
-  notifications: {
-    on_failure: [{ url: "${DISCORD_WEBHOOK_URL}" }],
-    on_success: [{ url: "${SLACK_WEBHOOK_URL}" }],
-  },
-},
-```
-
-`${VAR}` references are resolved from environment variables at runtime.
-
-## Dashboard auth (optional)
-
-The dashboard is open by default for local dev. To require Google sign-in:
-
-1. Place your GCP OAuth `client_secret.json` in the project root (or set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`).
-2. Generate a session secret and add it to `.env`:
-
-```bash
-bun run generate:secret
-```
-
-Paste the output as `SESSION_SECRET` in `.env`.
-
-3. For local dev with `bun run dev` (Vite on port 5173), create `.env.local` with `BASE_URL=http://localhost:5173` so the OAuth callback and session cookie use the same origin. Keep `BASE_URL=http://localhost:3000` in `.env` for Docker/production. `.env.local` overrides `.env` when running locally and is gitignored.
-
-4. Set super-admin emails (these users get full dashboard access on first login):
-
-```
-SUPER_ADMINS=you@gmail.com,teammate@gmail.com
-```
-
-5. Optionally enable access requests so non-admin users can request dashboard access:
-
-```
-ACCESS_REQUESTS_ENABLED=true
-```
-
-When `SESSION_SECRET` is unset, auth is disabled and the dashboard remains open.
-
-See [Access requests](docs/access-requests.md) for the full operator guide and `.env.example` for all options.
-
 ## Docs
 
-- [API reference](docs/api.md) -- endpoints, query params, and curl examples
-- [Jobs and config](docs/jobs.md) -- job definitions, `cinnamon.config.ts`
-- [Writing scripts](docs/writing-scripts.md) -- output contract for shell scripts
-- [Migrations](docs/migrations.md) -- schema namespacing, dual migration pattern
-- [Project structure](docs/project-structure.md) -- directory layout, scripts, CLI
-- [Access requests](docs/access-requests.md) -- self-service access request flow for the dashboard
-- [Deployment](docs/deploy.md) -- Docker Compose and CI/CD overview
-- [Resilience](docs/resilience.md) -- zombie cleanup and worker self-healing
-- [Postgres](docs/postgres.md) -- health checks, SQL shell, queries
-- [Redis](docs/redis.md) -- health checks, debugging
-- [Tests](docs/tests.md) -- test coverage and details
-- [Examples](examples/) -- reference implementations (Spotify integration, deploy configs)
+| Topic | Description |
+|-------|-------------|
+| [API reference](docs/api.md) | Endpoints, query params, curl examples |
+| [Jobs and config](docs/jobs.md) | Job definitions, `cinnamon.config.ts` |
+| [Writing scripts](docs/writing-scripts.md) | Output contract for shell scripts |
+| [Dashboard auth](docs/auth.md) | Google OAuth setup and session management |
+| [Access requests](docs/access-requests.md) | Self-service access request flow |
+| [Deployment](docs/deploy.md) | Docker Compose and CI/CD |
+| [Migrations](docs/migrations.md) | Schema namespacing, migration patterns |
+| [Project structure](docs/project-structure.md) | Directory layout, scripts, CLI |
+| [Resilience](docs/resilience.md) | Zombie cleanup and worker self-healing |
+| [Postgres](docs/postgres.md) | Health checks, SQL shell |
+| [Redis](docs/redis.md) | Health checks, debugging |
+| [Tests](docs/tests.md) | Test coverage and details |
+| [Examples](examples/) | Reference implementations (Spotify, deploy configs) |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+## License
+
+[MIT](LICENSE)

@@ -86,7 +86,9 @@ src/
 vite.config.js        Vite config (React plugin, Tailwind, API proxy)
 src/dashboard/tsconfig.json  TypeScript config for React JSX (separate from server)
 tests/                Unit and integration tests
-docs/                 Documentation
+docs/                 Documentation (see auth.md for dashboard OAuth)
+assets/               README banner and dashboard screenshots
+CONTRIBUTING.md       Local dev setup for contributors
 ```
 
 ## Scripts

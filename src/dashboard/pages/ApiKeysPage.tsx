@@ -31,6 +31,7 @@ import {
   rotateApiKey,
   updateApiKeyLabel,
 } from "../lib/api";
+import { copyToClipboard } from "../lib/clipboard";
 import type { ApiKeyRow, TeamRow } from "../lib/types";
 
 type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
@@ -99,7 +100,7 @@ export function ApiKeysPage() {
   }
 
   function handleCopy(id: number, hint: string) {
-    navigator.clipboard?.writeText(`cin_...${hint}`);
+    copyToClipboard(`cin_...${hint}`);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   }
@@ -866,7 +867,7 @@ function RevealKeyModal({ plainKey, onClose }: { plainKey: string; onClose: () =
   const backdropRef = useRef<HTMLDivElement>(null);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(plainKey);
+    await copyToClipboard(plainKey);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

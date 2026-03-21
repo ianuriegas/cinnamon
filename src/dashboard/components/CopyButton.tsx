@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from "react";
+import { copyToClipboard } from "../lib/clipboard";
 
 export function CopyButton({ getText }: { getText: () => string }) {
   const [copied, setCopied] = useState(false);
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copy = useCallback(() => {
-    navigator.clipboard.writeText(getText()).then(() => {
+    copyToClipboard(getText()).then(() => {
       setCopied(true);
       if (timeout.current) clearTimeout(timeout.current);
       timeout.current = setTimeout(() => setCopied(false), 1500);

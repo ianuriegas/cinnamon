@@ -166,13 +166,14 @@ const worker = new Worker<JobData>(
       await upsertProcessingLog(job, jobId);
     }
 
+    const logLines = (jobId ? jobLogLinesMap.get(jobId) : undefined) ?? [];
+
     try {
       const handler = jobHandlers[job.name];
       if (!handler) {
         throw new Error(`No handler registered for job '${job.name}'`);
       }
 
-      const logLines = (jobId ? jobLogLinesMap.get(jobId) : undefined) ?? [];
       const shellOptions: ShellJobOptions = {
         signal: ac.signal,
         onChunk: (stream, data) => {
@@ -198,12 +199,12 @@ const worker = new Worker<JobData>(
         },
       });
 
-      if (jobId && logLines.length > 0) {
-        jobLogsMap.set(jobId, logLines.join(""));
-      }
       return result;
     } finally {
       if (jobId) {
+        if (logLines.length > 0) {
+          jobLogsMap.set(jobId, logLines.join(""));
+        }
         activeJobs.delete(jobId);
         procRegistry.delete(jobId);
         jobLogLinesMap.delete(jobId);

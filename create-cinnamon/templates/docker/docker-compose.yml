@@ -1,6 +1,7 @@
 x-app-env: &app-env
   DATABASE_URL: postgresql://${POSTGRES_USER:-cinnamon}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-cinnamon}
   REDIS_URL: redis://redis:6379
+  UV_LINK_MODE: copy
 
 x-app-image: &app-image
   image: ghcr.io/ianuriegas/cinnamon:${CINNAMON_VERSION:-latest}
@@ -8,6 +9,7 @@ x-app-image: &app-image
 x-app-volumes: &app-volumes
   - ./cinnamon.config.ts:/app/cinnamon.config.ts:ro
   - ./jobs:/app/jobs
+  - ./db/schema:/app/db/custom-schema:ro
   - ./db/migrations:/app/db/custom-migrations:ro
 
 services:

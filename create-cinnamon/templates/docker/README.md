@@ -15,6 +15,7 @@ Dashboard: http://localhost:3000/dashboard
 | Command | What it does |
 |---|---|
 | `bun run dev` | Start all services (Postgres, Redis, API, worker, scheduler) |
+| `bun run deploy` | Start services in detached mode, rebuild, and prune old images |
 | `bun run db:migrate` | Run database migrations (core + custom) |
 | `bun run db:generate` | Generate a migration from your custom schema |
 | `bun run db:drop` | Drop the latest custom migration (file only) |
@@ -33,6 +34,23 @@ Dashboard: http://localhost:3000/dashboard
 3. Trigger via CLI (`cinnamon trigger <name>`) or API
 
 The `jobs/` directory is volume-mounted into the container, so changes take effect immediately.
+
+## Writing TypeScript jobs
+
+TypeScript jobs can import utilities that work both locally (for editor support) and inside Docker (at runtime):
+
+```ts
+// Use isDirectExecution for scripts that can be run directly or as a job
+import { isDirectExecution } from "@/src/lib/is-direct-execution.ts";
+
+// Use the Drizzle client to query your custom tables
+import { db } from "@/db/index.ts";
+
+// Import your custom schema — @/db/custom-schema/ maps to db/schema/ locally
+import { metrics } from "@/db/custom-schema/metrics.ts";
+```
+
+The `@/` path alias resolves to the project root locally (via `tsconfig.json`) and to `/app` inside Docker. The `@/db/custom-schema/*` alias maps to your local `db/schema/` directory so the same import paths work in both environments.
 
 ## Custom tables
 
